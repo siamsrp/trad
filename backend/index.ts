@@ -5,7 +5,7 @@ import cors from 'cors';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import admin from 'firebase-admin';
-import { User, Transaction, Trade, KYC, CustomAsset, Manipulation } from './models.ts';
+import { User, Transaction, Trade, KYC, CustomAsset, Manipulation, BinaryOption } from './models.ts';
 
 dotenv.config();
 
@@ -46,7 +46,7 @@ async function loadCustomAssetsAndManipulations() {
 
     // 2. Load active manipulations
     const manips = await Manipulation.find();
-    manips.forEach(m => {
+    manips.forEach((m: any) => {
       activeManipulations.set(m.assetId, {
         direction: m.direction as 'up' | 'down',
         endTime: m.endTime
@@ -56,7 +56,7 @@ async function loadCustomAssetsAndManipulations() {
 
     // 3. Load custom assets from DB
     const customs = await CustomAsset.find();
-    customs.forEach(c => {
+    customs.forEach((c: any) => {
       if (!assets.some(a => a.id === c.id)) {
         assets.push({
           id: c.id,
@@ -68,6 +68,14 @@ async function loadCustomAssetsAndManipulations() {
       }
     });
     console.log(`Loaded ${customs.length} custom assets from database.`);
+
+    // 4. Seed Binary Options if empty
+    const opts = await BinaryOption.find();
+    if (opts.length === 0) {
+      await BinaryOption.create({ duration: 30, label: '30s', commission: 25 });
+      await BinaryOption.create({ duration: 60, label: '60s', commission: 30 });
+      console.log('Seeded default binary options.');
+    }
   } catch (err) {
     console.error('Error loading startup data from MongoDB:', err);
   }
@@ -103,6 +111,21 @@ async function requireAuth(req: express.Request, res: express.Response, next: ex
   }
 }
 
+async function checkPermission(email: string | undefined, permission: string): Promise<boolean> {
+  if (!email) return false;
+  if (email === 'siam579214@gmail.com') return true;
+  try {
+    const user = await User.findOne({ email });
+    if (!user) return false;
+    if (user.role === 'owner') return true;
+    if (user.role === 'admin' && user.permissions.includes(permission)) return true;
+    return false;
+  } catch (err) {
+    console.error('Permission check error:', err);
+    return false;
+  }
+}
+
 // ── Health ──────────────────────────────────────────────────────────────────
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', message: 'Backend is running' });
@@ -113,9 +136,38 @@ app.post('/api/users/sync', async (req, res) => {
   const { email, displayName, photoURL } = req.body;
   try {
     let user = await User.findOne({ email });
-    if (!user) user = await User.create({ email, displayName, photoURL });
+    const isDefaultAdmin = email === 'siam579214@gmail.com';
+    const initialRole = isDefaultAdmin ? 'owner' : 'user';
+    const initialPermissions = isDefaultAdmin 
+      ? ['manage_users', 'manage_trades', 'manage_transactions', 'manage_kyc', 'market_control', 'manage_admins'] 
+      : [];
+    const initialIsOwner = isDefaultAdmin;
+
+    if (!user) {
+      user = await User.create({ 
+        email, 
+        displayName, 
+        photoURL, 
+        role: initialRole, 
+        permissions: initialPermissions, 
+        isOwner: initialIsOwner,
+        balance: 10000 
+      });
+    } else {
+      if (isDefaultAdmin && (user.role !== 'owner' || !user.isOwner)) {
+        user.role = 'owner';
+        user.isOwner = true;
+        user.permissions = initialPermissions;
+        await user.save();
+      }
+      if (user.balance === undefined || user.balance === null) {
+        user.balance = 10000;
+        await user.save();
+      }
+    }
     res.json(user);
-  } catch {
+  } catch (err) {
+    console.error('Sync error:', err);
     res.status(500).json({ error: 'Error syncing user' });
   }
 });
@@ -342,7 +394,8 @@ app.post('/api/binary', async (req, res) => {
     if (!asset) { res.status(404).json({ error: 'Asset not found' }); return; }
 
     const entryPrice = asset.price;
-    const commission = duration === 30 ? 0.25 : 0.30; // 30s = 25%, 60s = 30%
+    const dbOption = await BinaryOption.findOne({ duration: Number(duration) });
+    const commission = dbOption ? (dbOption.commission / 100) : (duration === 30 ? 0.25 : 0.30);
 
     user.balance -= amount;
     await user.save();
@@ -396,6 +449,10 @@ app.get('/api/admin/market', (_req, res) => {
 });
 
 app.post('/api/admin/market/add', async (req, res) => {
+  const requesterEmail = req.headers['x-user-email'] as string;
+  const isAuthorized = await checkPermission(requesterEmail, 'market_control');
+  if (!isAuthorized) { res.status(403).json({ error: 'Forbidden' }); return; }
+
   const { id, name, price, volatility, type, manipulationDirection, manipulationDuration, manipulationUnit } = req.body;
   if (!id || !name || price === undefined || volatility === undefined || !type) {
     res.status(400).json({ error: 'Missing required fields' });
@@ -460,6 +517,10 @@ app.post('/api/admin/market/add', async (req, res) => {
 });
 
 app.post('/api/admin/market/manipulate', async (req, res) => {
+  const requesterEmail = req.headers['x-user-email'] as string;
+  const isAuthorized = await checkPermission(requesterEmail, 'market_control');
+  if (!isAuthorized) { res.status(403).json({ error: 'Forbidden' }); return; }
+
   const { assetId, direction, duration, durationUnit } = req.body;
   if (!assetId || !direction) {
     res.status(400).json({ error: 'Missing required fields' });
@@ -510,7 +571,11 @@ app.post('/api/admin/market/manipulate', async (req, res) => {
   }
 });
 
-app.patch('/api/admin/market/:id', (req, res) => {
+app.patch('/api/admin/market/:id', async (req, res) => {
+  const requesterEmail = req.headers['x-user-email'] as string;
+  const isAuthorized = await checkPermission(requesterEmail, 'market_control');
+  if (!isAuthorized) { res.status(403).json({ error: 'Forbidden' }); return; }
+
   const { price, volatility, direction } = req.body;
   const asset = assets.find(a => a.id === req.params.id);
   if (!asset) { res.status(404).json({ error: 'Asset not found' }); return; }
@@ -522,22 +587,59 @@ app.patch('/api/admin/market/:id', (req, res) => {
   res.json({ id: asset.id, price: asset.price, volatility: asset.volatility });
 });
 
+// Admin: Delete a custom coin listing
+app.delete('/api/admin/market/:id', async (req, res) => {
+  const requesterEmail = req.headers['x-user-email'] as string;
+  const isAuthorized = await checkPermission(requesterEmail, 'market_control');
+  if (!isAuthorized) { res.status(403).json({ error: 'Forbidden' }); return; }
+
+  try {
+    const idLower = req.params.id.toLowerCase().trim();
+    
+    // Delete from MongoDB CustomAsset and Manipulation
+    await CustomAsset.deleteOne({ id: idLower });
+    await Manipulation.deleteOne({ assetId: idLower });
+    
+    // Remove from in-memory assets array
+    assets = assets.filter(a => a.id !== idLower);
+    activeManipulations.delete(idLower);
+    
+    io.emit('price_update', assets);
+    res.json({ success: true, message: `Successfully deleted asset ${idLower}` });
+  } catch (err: any) {
+    console.error('Error deleting coin:', err);
+    res.status(500).json({ error: err.message || 'Error deleting asset' });
+  }
+});
+
 // ── Admin routes ─────────────────────────────────────────────────────────────
-app.get('/api/admin/users', async (_req, res) => {
+app.get('/api/admin/users', async (req, res) => {
+  const requesterEmail = req.headers['x-user-email'] as string;
+  const isAuthorized = await checkPermission(requesterEmail, 'manage_admins');
+  if (!isAuthorized) { res.status(403).json({ error: 'Forbidden' }); return; }
+
   try {
     const users = await User.find().sort({ createdAt: -1 });
     res.json(users);
   } catch { res.status(500).json({ error: 'Error fetching users' }); }
 });
 
-app.get('/api/admin/transactions', async (_req, res) => {
+app.get('/api/admin/transactions', async (req, res) => {
+  const requesterEmail = req.headers['x-user-email'] as string;
+  const isAuthorized = await checkPermission(requesterEmail, 'manage_transactions');
+  if (!isAuthorized) { res.status(403).json({ error: 'Forbidden' }); return; }
+
   try {
     const txs = await Transaction.find().sort({ timestamp: -1 }).limit(500);
     res.json(txs);
   } catch { res.status(500).json({ error: 'Error fetching transactions' }); }
 });
 
-app.get('/api/admin/trades', async (_req, res) => {
+app.get('/api/admin/trades', async (req, res) => {
+  const requesterEmail = req.headers['x-user-email'] as string;
+  const isAuthorized = await checkPermission(requesterEmail, 'manage_trades');
+  if (!isAuthorized) { res.status(403).json({ error: 'Forbidden' }); return; }
+
   try {
     const trades = await Trade.find().sort({ timestamp: -1 }).limit(500);
     res.json(trades);
@@ -546,7 +648,20 @@ app.get('/api/admin/trades', async (_req, res) => {
 
 // Admin: delete user
 app.delete('/api/admin/users/:id', async (req, res) => {
+  const requesterEmail = req.headers['x-user-email'] as string;
+  const isAuthorized = await checkPermission(requesterEmail, 'manage_admins') || await checkPermission(requesterEmail, 'manage_users');
+  if (!isAuthorized) { res.status(403).json({ error: 'Forbidden' }); return; }
+
   try {
+    const userToDelete = await User.findById(req.params.id);
+    if (userToDelete && serviceAccount) {
+      try {
+        const fbUser = await admin.auth().getUserByEmail(userToDelete.email);
+        await admin.auth().deleteUser(fbUser.uid);
+      } catch (err) {
+        console.warn('Could not delete user from Firebase (it might not exist there):', err);
+      }
+    }
     await User.findByIdAndDelete(req.params.id);
     await Transaction.deleteMany({ userId: req.params.id });
     await Trade.deleteMany({ userId: req.params.id });
@@ -556,20 +671,31 @@ app.delete('/api/admin/users/:id', async (req, res) => {
 
 // Admin: force deposit/withdrawal for a user
 app.post('/api/admin/users/:id/fund', async (req, res) => {
+  const requesterEmail = req.headers['x-user-email'] as string;
+  const isAuthorized = await checkPermission(requesterEmail, 'manage_transactions') || await checkPermission(requesterEmail, 'manage_admins');
+  if (!isAuthorized) { res.status(403).json({ error: 'Forbidden' }); return; }
+
   const { type, amount } = req.body;
   try {
     const user = await User.findById(req.params.id);
     if (!user) { res.status(404).json({ error: 'User not found' }); return; }
-    const delta = type === 'deposit' ? amount : -amount;
-    user.balance = Math.max(0, user.balance + delta);
+    const delta = Number(type === 'deposit' ? amount : -amount);
+    user.balance = Math.max(0, Number(user.balance || 0) + delta);
     await user.save();
-    const tx = await Transaction.create({ userId: user._id, type, amount });
+    const tx = await Transaction.create({ userId: user._id, type, amount: Number(amount) });
     res.json({ user, transaction: tx });
-  } catch { res.status(500).json({ error: 'Error funding user' }); }
+  } catch (err) {
+    console.error('Funding error:', err);
+    res.status(500).json({ error: 'Error funding user' });
+  }
 });
 
 // Admin: force-close a trade
 app.patch('/api/admin/trades/:id/close', async (req, res) => {
+  const requesterEmail = req.headers['x-user-email'] as string;
+  const isAuthorized = await checkPermission(requesterEmail, 'manage_trades');
+  if (!isAuthorized) { res.status(403).json({ error: 'Forbidden' }); return; }
+
   const { exitPrice } = req.body;
   try {
     const trade = await Trade.findById(req.params.id);
@@ -586,13 +712,20 @@ app.patch('/api/admin/trades/:id/close', async (req, res) => {
     trade.closedAt = new Date();
     await trade.save();
     const user = await User.findById(trade.userId);
-    if (user) { user.balance += trade.amount + profit; await user.save(); }
+    if (user) {
+      user.balance = Number(user.balance || 0) + trade.amount + profit;
+      await user.save();
+    }
     res.json({ trade });
   } catch { res.status(500).json({ error: 'Error closing trade' }); }
 });
 
 // Admin: get all trades for a specific user
 app.get('/api/admin/users/:id/trades', async (req, res) => {
+  const requesterEmail = req.headers['x-user-email'] as string;
+  const isAuthorized = await checkPermission(requesterEmail, 'manage_trades') || await checkPermission(requesterEmail, 'manage_admins');
+  if (!isAuthorized) { res.status(403).json({ error: 'Forbidden' }); return; }
+
   try {
     const trades = await Trade.find({ userId: req.params.id }).sort({ timestamp: -1 });
     res.json(trades);
@@ -601,10 +734,156 @@ app.get('/api/admin/users/:id/trades', async (req, res) => {
 
 // Admin: get all transactions for a specific user
 app.get('/api/admin/users/:id/transactions', async (req, res) => {
+  const requesterEmail = req.headers['x-user-email'] as string;
+  const isAuthorized = await checkPermission(requesterEmail, 'manage_transactions') || await checkPermission(requesterEmail, 'manage_admins');
+  if (!isAuthorized) { res.status(403).json({ error: 'Forbidden' }); return; }
+
   try {
     const txs = await Transaction.find({ userId: req.params.id }).sort({ timestamp: -1 });
     res.json(txs);
   } catch { res.status(500).json({ error: 'Error fetching transactions' }); }
+});
+
+// Admin: create a new user or admin in Firebase and MongoDB
+app.post('/api/admin/users/create', async (req, res) => {
+  const requesterEmail = req.headers['x-user-email'] as string;
+  const { email, password, displayName, role, permissions, balance = 10000 } = req.body;
+
+  const requiredPermission = (role === 'admin' || role === 'owner') ? 'manage_admins' : 'manage_users';
+  const isAuthorized = await checkPermission(requesterEmail, requiredPermission);
+  if (!isAuthorized) { res.status(403).json({ error: 'Forbidden' }); return; }
+
+  try {
+    if (serviceAccount) {
+      try {
+        await admin.auth().createUser({
+          email,
+          password,
+          displayName: displayName || 'Trader'
+        });
+      } catch (err: any) {
+        if (err.code === 'auth/email-already-in-use') {
+          console.log('Firebase user already exists. Creating MongoDB record.');
+        } else {
+          res.status(400).json({ error: err.message || 'Firebase user creation failed' });
+          return;
+        }
+      }
+    }
+
+    let user = await User.findOne({ email });
+    if (user) {
+      res.status(400).json({ error: 'User with this email already exists in MongoDB' });
+      return;
+    }
+
+    user = await User.create({
+      email,
+      displayName: displayName || 'Trader',
+      role: role || 'user',
+      permissions: permissions || [],
+      isOwner: role === 'owner',
+      balance: Number(balance)
+    });
+
+    res.json(user);
+  } catch (err: any) {
+    console.error('Error creating user/admin:', err);
+    res.status(500).json({ error: err.message || 'Error creating user/admin' });
+  }
+});
+
+// Admin: update permissions/role for an admin
+app.patch('/api/admin/users/:id/permissions', async (req, res) => {
+  const requesterEmail = req.headers['x-user-email'] as string;
+  const isAuthorized = await checkPermission(requesterEmail, 'manage_admins');
+  if (!isAuthorized) { res.status(403).json({ error: 'Forbidden' }); return; }
+
+  const { role, permissions } = req.body;
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) { res.status(404).json({ error: 'User not found' }); return; }
+
+    user.role = role;
+    user.permissions = permissions || [];
+    user.isOwner = role === 'owner';
+    await user.save();
+
+    res.json(user);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Error updating permissions' });
+  }
+});
+
+// Admin: transfer ownership to another admin
+app.post('/api/admin/users/transfer-ownership', async (req, res) => {
+  const requesterEmail = req.headers['x-user-email'] as string;
+  const { toUserId } = req.body;
+
+  const ownerUser = await User.findOne({ email: requesterEmail });
+  if (!ownerUser || ownerUser.role !== 'owner') {
+    res.status(403).json({ error: 'Only owners can transfer ownership' });
+    return;
+  }
+
+  try {
+    const targetUser = await User.findById(toUserId);
+    if (!targetUser) { res.status(404).json({ error: 'Target user not found' }); return; }
+
+    targetUser.role = 'owner';
+    targetUser.isOwner = true;
+    targetUser.permissions = ['manage_users', 'manage_trades', 'manage_transactions', 'manage_kyc', 'market_control', 'manage_admins'];
+    await targetUser.save();
+
+    res.json({ success: true, message: `Successfully granted owner status to ${targetUser.email}` });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Error transferring ownership' });
+  }
+});
+
+// ── Binary Option Config APIs ────────────────────────────────────────────────
+app.get('/api/binary/options', async (_req, res) => {
+  try {
+    const options = await BinaryOption.find().sort({ duration: 1 });
+    res.json(options);
+  } catch {
+    res.status(500).json({ error: 'Error fetching binary options' });
+  }
+});
+
+app.post('/api/admin/binary/options', async (req, res) => {
+  const requesterEmail = req.headers['x-user-email'] as string;
+  const isAuthorized = await checkPermission(requesterEmail, 'manage_admins') || await checkPermission(requesterEmail, 'market_control');
+  if (!isAuthorized) { res.status(403).json({ error: 'Forbidden' }); return; }
+
+  const { duration, label, commission } = req.body;
+  if (!duration || !label || commission === undefined) {
+    res.status(400).json({ error: 'Missing required fields' });
+    return;
+  }
+  try {
+    const option = await BinaryOption.create({
+      duration: Number(duration),
+      label,
+      commission: Number(commission)
+    });
+    res.json(option);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Error creating binary option' });
+  }
+});
+
+app.delete('/api/admin/binary/options/:id', async (req, res) => {
+  const requesterEmail = req.headers['x-user-email'] as string;
+  const isAuthorized = await checkPermission(requesterEmail, 'manage_admins') || await checkPermission(requesterEmail, 'market_control');
+  if (!isAuthorized) { res.status(403).json({ error: 'Forbidden' }); return; }
+
+  try {
+    await BinaryOption.deleteOne({ _id: req.params.id });
+    res.json({ success: true });
+  } catch {
+    res.status(500).json({ error: 'Error deleting binary option' });
+  }
 });
 
 // ── Market Data Engine ────────────────────────────────────────────────────────
@@ -669,7 +948,7 @@ setInterval(() => {
       if (now > manip.endTime) {
         // Manipulation expired
         activeManipulations.delete(asset.id);
-        Manipulation.deleteOne({ assetId: asset.id }).catch(e => console.error('Error deleting expired manipulation:', e));
+        Manipulation.deleteOne({ assetId: asset.id }).catch((e: any) => console.error('Error deleting expired manipulation:', e));
         
         const change = (Math.random() - 0.5) * asset.volatility;
         asset.price = Math.max(0.0001, asset.price + change);

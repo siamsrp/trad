@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { TrendingUp, TrendingDown, Clock, Zap, CheckCircle, XCircle, DollarSign } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { TrendingUp, TrendingDown, Clock, Zap, CheckCircle, XCircle, DollarSign, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { io } from 'socket.io-client';
 import { clsx, type ClassValue } from 'clsx';
@@ -44,11 +44,26 @@ interface ActiveTrade {
 
 export default function BinaryTrade({ user, selectedAsset, balance, onBalanceUpdate }: BinaryTradeProps) {
   const [amount, setAmount] = useState(10);
-  const [duration, setDuration] = useState<30 | 60>(30);
+  const [duration, setDuration] = useState<number>(30);
+  const [options, setOptions] = useState<any[]>([]);
   const [activeTrades, setActiveTrades] = useState<ActiveTrade[]>([]);
   const [results, setResults] = useState<TradeResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [resolvedResult, setResolvedResult] = useState<TradeResult | null>(null);
   const socketRef = useRef<any>(null);
+
+  // Fetch binary options
+  useEffect(() => {
+    fetch(`${API}/api/binary/options`)
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setOptions(data);
+          setDuration(data[0].duration);
+        }
+      })
+      .catch(err => console.error('Error fetching binary options:', err));
+  }, []);
 
   // Socket for binary results
   useEffect(() => {
@@ -60,10 +75,19 @@ export default function BinaryTrade({ user, selectedAsset, balance, onBalanceUpd
       setActiveTrades(prev => prev.filter(t =>
         !(t.assetId === result.assetId && t.direction === result.direction && t.amount === result.amount)
       ));
+      setResolvedResult(result);
       onBalanceUpdate(0); // trigger refetch
     });
     return () => { s.close(); };
-  }, [user?.email]);
+  }, [user?.email, onBalanceUpdate]);
+
+  // Cleanup resolved result popup
+  useEffect(() => {
+    if (resolvedResult) {
+      const t = setTimeout(() => setResolvedResult(null), 5000);
+      return () => clearTimeout(t);
+    }
+  }, [resolvedResult]);
 
   // Countdown timer
   useEffect(() => {
@@ -96,7 +120,9 @@ export default function BinaryTrade({ user, selectedAsset, balance, onBalanceUpd
       const data = await res.json();
       if (!res.ok) { alert(data.error); return; }
 
-      const commission = duration === 30 ? 0.25 : 0.30;
+      const selectedOpt = options.find(o => o.duration === duration) || { commission: duration === 30 ? 25 : 30 };
+      const commPercentage = selectedOpt.commission / 100;
+
       setActiveTrades(prev => [...prev, {
         assetId: selectedAsset.id,
         assetName: selectedAsset.name,
@@ -104,7 +130,7 @@ export default function BinaryTrade({ user, selectedAsset, balance, onBalanceUpd
         amount,
         duration,
         entryPrice: data.entryPrice,
-        commission,
+        commission: commPercentage,
         startTime: Date.now(),
         timeLeft: duration,
       }]);
@@ -113,8 +139,17 @@ export default function BinaryTrade({ user, selectedAsset, balance, onBalanceUpd
     setLoading(false);
   };
 
-  const commission = duration === 30 ? 25 : 30;
+  const selectedOpt = options.find(o => o.duration === duration) || { commission: duration === 30 ? 25 : 30 };
+  const commission = selectedOpt.commission;
   const potentialProfit = (amount * (commission / 100)).toFixed(2);
+
+  // Big overlay for current trade
+  const currentTrade = activeTrades[0];
+  const livePrice = selectedAsset?.id === currentTrade?.assetId ? selectedAsset.price : currentTrade?.entryPrice;
+  const isWinning = currentTrade ? (
+    currentTrade.direction === 'up' ? livePrice > currentTrade.entryPrice : livePrice < currentTrade.entryPrice
+  ) : false;
+  const progressPercent = currentTrade ? (currentTrade.timeLeft / currentTrade.duration) * 100 : 0;
 
   return (
     <div className="space-y-4">
@@ -131,12 +166,12 @@ export default function BinaryTrade({ user, selectedAsset, balance, onBalanceUpd
       <div>
         <label className="text-[8px] text-white/30 uppercase font-mono tracking-widest block mb-1.5">Duration</label>
         <div className="grid grid-cols-2 gap-2">
-          {([30, 60] as const).map(d => (
-            <button key={d} onClick={() => setDuration(d)}
+          {options.map(opt => (
+            <button key={opt.duration} onClick={() => setDuration(opt.duration)}
               className={cn('py-2.5 rounded-xl border text-xs font-bold transition-all flex flex-col items-center gap-0.5',
-                duration === d ? 'bg-orange-500/20 border-orange-500/50 text-orange-400' : 'bg-[#0d0d0f] border-white/8 text-white/50 hover:border-white/20')}>
-              <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{d}s</span>
-              <span className="text-[9px] opacity-70">+{d === 30 ? 25 : 30}% profit</span>
+                duration === opt.duration ? 'bg-orange-500/20 border-orange-500/50 text-orange-400' : 'bg-[#0d0d0f] border-white/8 text-white/50 hover:border-white/20')}>
+              <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{opt.label}</span>
+              <span className="text-[9px] opacity-70">+{opt.commission}% profit</span>
             </button>
           ))}
         </div>
@@ -183,7 +218,7 @@ export default function BinaryTrade({ user, selectedAsset, balance, onBalanceUpd
         </button>
       </div>
 
-      {/* Active trades */}
+      {/* Active trades side list */}
       {activeTrades.length > 0 && (
         <div className="space-y-2">
           <p className="text-[8px] font-mono uppercase tracking-widest text-white/30">Active ({activeTrades.length})</p>
@@ -240,6 +275,192 @@ export default function BinaryTrade({ user, selectedAsset, balance, onBalanceUpd
           ))}
         </div>
       )}
+
+      {/* ── LIVE BINARY TRADE OVERLAY MODAL ── */}
+      <AnimatePresence>
+        {currentTrade && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-[#151619]/90 border border-white/10 rounded-3xl p-8 w-full max-w-sm shadow-2xl relative text-center overflow-hidden"
+            >
+              {/* Background ambient glowing */}
+              <div className={cn(
+                "absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 blur-[80px] rounded-full opacity-20 pointer-events-none transition-all duration-500",
+                isWinning ? "bg-green-500" : "bg-red-500"
+              )} />
+
+              <div className="relative z-10 space-y-6">
+                <div className="flex items-center justify-between">
+                  <span className="w-6 h-6" /> {/* Placeholder for alignment */}
+                  <div>
+                    <p className="text-[10px] font-mono uppercase tracking-[0.25em] text-white/30">Active Binary Trade</p>
+                    <h3 className="text-xl font-bold mt-1 text-white">{currentTrade.assetName}</h3>
+                  </div>
+                  <button onClick={() => setActiveTrades(prev => prev.filter((_, idx) => idx !== 0))} className="p-1 text-white/40 hover:text-white rounded-lg hover:bg-white/5 transition-all">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Big Countdown Timer */}
+                <div className="relative w-32 h-32 mx-auto flex items-center justify-center">
+                  <svg className="w-full h-full transform -rotate-90">
+                    <circle
+                      cx="64"
+                      cy="64"
+                      r="54"
+                      stroke="rgba(255,255,255,0.05)"
+                      strokeWidth="6"
+                      fill="transparent"
+                    />
+                    <circle
+                      cx="64"
+                      cy="64"
+                      r="54"
+                      stroke={isWinning ? "#22c55e" : "#ef4444"}
+                      strokeWidth="6"
+                      fill="transparent"
+                      strokeDasharray={2 * Math.PI * 54}
+                      strokeDashoffset={2 * Math.PI * 54 * (1 - progressPercent / 100)}
+                      className="transition-all duration-300 ease-out"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-4xl font-bold font-mono text-white">{currentTrade.timeLeft}</span>
+                    <span className="text-[9px] font-mono uppercase text-white/40 tracking-wider">seconds</span>
+                  </div>
+                </div>
+
+                {/* Price Display comparison */}
+                <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-[9px] font-mono uppercase text-white/30 tracking-wider">Entry Price</p>
+                    <p className="text-base font-bold font-mono text-white/70 mt-0.5">${currentTrade.entryPrice.toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-mono uppercase text-white/30 tracking-wider">Current Price</p>
+                    <p className={cn("text-base font-bold font-mono mt-0.5 animate-pulse", isWinning ? "text-green-400" : "text-red-400")}>
+                      ${livePrice.toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Live indicators */}
+                <div className="flex items-center justify-center gap-2">
+                  <span className={cn(
+                    "px-4 py-1.5 rounded-full text-xs font-bold font-mono tracking-widest uppercase flex items-center gap-2 border",
+                    isWinning 
+                      ? "bg-green-500/10 border-green-500/20 text-green-400 animate-bounce" 
+                      : "bg-red-500/10 border-red-500/20 text-red-400"
+                  )}>
+                    <span className={cn("w-2 h-2 rounded-full", isWinning ? "bg-green-400 animate-ping" : "bg-red-400")} />
+                    {isWinning ? 'Winning' : 'Losing'}
+                  </span>
+                </div>
+
+                <div className="flex justify-between text-[10px] font-mono text-white/30 pt-2 border-t border-white/5">
+                  <span>Investment: ${currentTrade.amount}</span>
+                  <span>Payout: +{(currentTrade.commission * 100).toFixed(0)}%</span>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── VICTORY / DEFEAT RESULT SPLASH SCREEN ── */}
+      <AnimatePresence>
+        {resolvedResult && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md"
+          >
+            <motion.div
+              initial={{ scale: 0.8, rotate: -3 }}
+              animate={{ scale: 1, rotate: 0 }}
+              exit={{ scale: 0.8, rotate: 3 }}
+              className={cn(
+                "border rounded-3xl p-8 w-full max-w-sm shadow-2xl text-center relative overflow-hidden",
+                resolvedResult.won ? "bg-[#0b1f13] border-green-500/30" : "bg-[#1f0b0b] border-red-500/30"
+              )}
+            >
+              {/* Confetti particles / ambient glow */}
+              <div className={cn(
+                "absolute -inset-10 blur-[100px] rounded-full opacity-35 pointer-events-none animate-pulse",
+                resolvedResult.won ? "bg-green-500" : "bg-red-500"
+              )} />
+
+              <div className="relative z-10 space-y-6">
+                <div className="mx-auto w-16 h-16 rounded-full flex items-center justify-center border transition-all duration-700 bg-white/5">
+                  {resolvedResult.won ? (
+                    <CheckCircle className="w-10 h-10 text-green-400" />
+                  ) : (
+                    <XCircle className="w-10 h-10 text-red-400" />
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <h2 className={cn(
+                    "text-4xl font-extrabold uppercase tracking-tighter font-mono",
+                    resolvedResult.won ? "text-green-400 drop-shadow-[0_0_12px_rgba(74,222,128,0.4)]" : "text-red-400 drop-shadow-[0_0_12px_rgba(248,113,113,0.4)]"
+                  )}>
+                    {resolvedResult.won ? 'Victory!' : 'Defeat'}
+                  </h2>
+                  <p className="text-[10px] text-white/40 font-mono uppercase tracking-widest">
+                    {resolvedResult.assetName} · {resolvedResult.duration}s Trade
+                  </p>
+                </div>
+
+                <div className="p-4 bg-black/20 rounded-2xl border border-white/5 space-y-2 text-left">
+                  <div className="flex justify-between text-xs font-mono text-white/50">
+                    <span>Investment</span>
+                    <span>${resolvedResult.amount}</span>
+                  </div>
+                  <div className="flex justify-between text-xs font-mono text-white/50">
+                    <span>Entry Price</span>
+                    <span>${resolvedResult.entryPrice.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs font-mono text-white/50">
+                    <span>Exit Price</span>
+                    <span>${resolvedResult.exitPrice.toFixed(2)}</span>
+                  </div>
+                  <div className="w-full h-px bg-white/5 my-2" />
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-mono text-white/50">Return</span>
+                    <span className={cn(
+                      "text-xl font-bold font-mono",
+                      resolvedResult.won ? "text-green-400" : "text-red-400"
+                    )}>
+                      {resolvedResult.won ? `+$${resolvedResult.profit.toFixed(2)}` : `-$${resolvedResult.amount}`}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setResolvedResult(null)}
+                  className={cn(
+                    "w-full py-3.5 rounded-2xl font-bold text-xs uppercase tracking-wider transition-all shadow-lg",
+                    resolvedResult.won 
+                      ? "bg-green-500 hover:bg-green-400 text-black shadow-green-500/20" 
+                      : "bg-red-500 hover:bg-red-400 text-white shadow-red-500/20"
+                  )}
+                >
+                  Continue Trading
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

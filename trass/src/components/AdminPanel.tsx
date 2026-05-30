@@ -4,7 +4,7 @@ import {
   Edit2, Save, X, TrendingUp, TrendingDown, DollarSign,
   RefreshCcw, Shield, Trash2, Plus, Eye, XCircle,
   Activity, Settings, ChevronUp, ChevronDown, Zap,
-  PieChart as PieChartIcon, Wallet
+  PieChart as PieChartIcon, Wallet, Clock
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
@@ -20,7 +20,13 @@ function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)); }
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 type Tab = 'overview' | 'users' | 'transactions' | 'trades' | 'kyc' | 'market' | 'settings';
 
-export default function AdminPanel() {
+interface AdminPanelProps {
+  user: any;
+  mongoUser: any;
+  onUserUpdate: () => void;
+}
+
+export default function AdminPanel({ user, mongoUser, onUserUpdate }: AdminPanelProps) {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [users, setUsers] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -59,14 +65,37 @@ export default function AdminPanel() {
   const [manipDur, setManipDur] = useState('');
   const [manipUnit, setManipUnit] = useState('minutes');
 
+  // Create user states
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [createUserEmail, setCreateUserEmail] = useState('');
+  const [createUserPassword, setCreateUserPassword] = useState('');
+  const [createUserDisplayName, setCreateUserDisplayName] = useState('');
+  const [createUserRole, setCreateUserRole] = useState<'user' | 'admin' | 'owner'>('user');
+  const [createUserBalance, setCreateUserBalance] = useState('10000');
+  const [createUserPermissions, setCreateUserPermissions] = useState<string[]>([]);
+
+  // Permissions modal states
+  const [showPermissionsModal, setShowPermissionsModal] = useState(false);
+  const [selectedPermUser, setSelectedPermUser] = useState<any>(null);
+  const [selectedPermRole, setSelectedPermRole] = useState<'user' | 'admin' | 'owner'>('admin');
+  const [selectedPermList, setSelectedPermList] = useState<string[]>([]);
+
+  // Binary Options states
+  const [binaryOptions, setBinaryOptions] = useState<any[]>([]);
+  const [newBinaryDuration, setNewBinaryDuration] = useState('');
+  const [newBinaryLabel, setNewBinaryLabel] = useState('');
+  const [newBinaryCommission, setNewBinaryCommission] = useState('');
+
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [u, t, tr, m] = await Promise.all([
-        fetch(`${API}/api/admin/users`).then(r => r.json()),
-        fetch(`${API}/api/admin/transactions`).then(r => r.json()),
-        fetch(`${API}/api/admin/trades`).then(r => r.json()),
-        fetch(`${API}/api/admin/market`).then(r => r.json()),
+      const headers = { 'x-user-email': user?.email || '' };
+      const [u, t, tr, m, bo] = await Promise.all([
+        fetch(`${API}/api/admin/users`, { headers }).then(r => r.json()),
+        fetch(`${API}/api/admin/transactions`, { headers }).then(r => r.json()),
+        fetch(`${API}/api/admin/trades`, { headers }).then(r => r.json()),
+        fetch(`${API}/api/admin/market`, { headers }).then(r => r.json()),
+        fetch(`${API}/api/binary/options`).then(r => r.json()),
       ]);
       if (Array.isArray(u)) setUsers(u);
       if (Array.isArray(t)) setTransactions(t);
@@ -74,56 +103,87 @@ export default function AdminPanel() {
       if (Array.isArray(m)) {
         setMarketAssets(m);
         if (m.length) {
-          // Keep active selection, or set default to first element
           setSelectedMarketAsset((prev: any) => {
             const found = prev ? m.find((a: any) => a.id === prev.id) : null;
             return found || m[0];
           });
         }
       }
-      const kycRes = await fetch(`${API}/api/admin/kyc`).then(r => r.json());
+      if (Array.isArray(bo)) setBinaryOptions(bo);
+      const kycRes = await fetch(`${API}/api/admin/kyc`, { headers }).then(r => r.json());
       if (Array.isArray(kycRes)) setKycList(kycRes);
     } catch (e) { console.error(e); }
     setLoading(false);
-  }, []);
+  }, [user]);
 
   useEffect(() => { fetchAll(); const i = setInterval(fetchAll, 10000); return () => clearInterval(i); }, [fetchAll]);
 
   const updateBalance = async (id: string) => {
-    await fetch(`${API}/api/users/${id}/balance`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ balance: newBalance }) });
+    await fetch(`${API}/api/users/${id}/balance`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'x-user-email': user?.email || '' },
+      body: JSON.stringify({ balance: newBalance })
+    });
     setEditingUser(null); fetchAll();
   };
+
   const deleteUser = async (id: string) => {
     if (!confirm('Delete this user and all their data?')) return;
-    await fetch(`${API}/api/admin/users/${id}`, { method: 'DELETE' }); fetchAll();
+    await fetch(`${API}/api/admin/users/${id}`, {
+      method: 'DELETE',
+      headers: { 'x-user-email': user?.email || '' }
+    });
+    fetchAll();
   };
+
   const fundUser = async () => {
     const amt = parseFloat(fundAmount);
     if (!amt || amt <= 0) return;
-    await fetch(`${API}/api/admin/users/${fundModal._id}/fund`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: fundType, amount: amt }) });
+    await fetch(`${API}/api/admin/users/${fundModal._id}/fund`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-user-email': user?.email || '' },
+      body: JSON.stringify({ type: fundType, amount: amt })
+    });
     setFundModal(null); setFundAmount(''); fetchAll();
   };
+
   const forceCloseTrade = async (trade: any) => {
     const ep = parseFloat(prompt(`Exit price for ${trade.assetName}?`) || '0');
     if (!ep) return;
-    await fetch(`${API}/api/admin/trades/${trade._id}/close`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ exitPrice: ep }) });
+    await fetch(`${API}/api/admin/trades/${trade._id}/close`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'x-user-email': user?.email || '' },
+      body: JSON.stringify({ exitPrice: ep })
+    });
     fetchAll();
   };
+
   const reviewKyc = async (id: string, status: 'approved' | 'rejected', reason?: string) => {
-    await fetch(`${API}/api/admin/kyc/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status, rejectionReason: reason || '' }) });
+    await fetch(`${API}/api/admin/kyc/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'x-user-email': user?.email || '' },
+      body: JSON.stringify({ status, rejectionReason: reason || '' })
+    });
     fetchAll();
   };
-  const openUserDetail = async (user: any) => {
-    setSelectedUser(user);
+
+  const openUserDetail = async (userObj: any) => {
+    setSelectedUser(userObj);
+    const headers = { 'x-user-email': user?.email || '' };
     const [tr, tx] = await Promise.all([
-      fetch(`${API}/api/admin/users/${user._id}/trades`).then(r => r.json()),
-      fetch(`${API}/api/admin/users/${user._id}/transactions`).then(r => r.json()),
+      fetch(`${API}/api/admin/users/${userObj._id}/trades`, { headers }).then(r => r.json()),
+      fetch(`${API}/api/admin/users/${userObj._id}/transactions`, { headers }).then(r => r.json()),
     ]);
     if (Array.isArray(tr)) setUserTrades(tr);
     if (Array.isArray(tx)) setUserTxs(tx);
   };
+
   const controlMarket = async (id: string, body: any) => {
-    const res = await fetch(`${API}/api/admin/market/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const res = await fetch(`${API}/api/admin/market/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'x-user-email': user?.email || '' },
+      body: JSON.stringify(body)
+    });
     const updated = await res.json();
     setMarketAssets(prev => prev.map(a => a.id === id ? { ...a, ...updated } : a));
     setSelectedMarketAsset((prev: any) => prev?.id === id ? { ...prev, ...updated } : prev);
@@ -137,7 +197,7 @@ export default function AdminPanel() {
     try {
       const res = await fetch(`${API}/api/admin/market/add`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-user-email': user?.email || '' },
         body: JSON.stringify({
           id: coinSymbol,
           name: coinName,
@@ -174,7 +234,7 @@ export default function AdminPanel() {
     try {
       const res = await fetch(`${API}/api/admin/market/manipulate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-user-email': user?.email || '' },
         body: JSON.stringify({
           assetId,
           direction: manipDir,
@@ -193,6 +253,154 @@ export default function AdminPanel() {
     } catch (e) {
       console.error(e);
       alert('Network error applying trend manipulation.');
+    }
+  };
+
+  const handleCreateUser = async () => {
+    if (!createUserEmail || !createUserPassword || !createUserDisplayName) {
+      alert('Please fill in Name, Email, and Password');
+      return;
+    }
+    try {
+      const res = await fetch(`${API}/api/admin/users/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-email': user?.email || ''
+        },
+        body: JSON.stringify({
+          email: createUserEmail,
+          password: createUserPassword,
+          displayName: createUserDisplayName,
+          role: createUserRole,
+          permissions: createUserRole === 'admin' ? createUserPermissions : createUserRole === 'owner' ? ['manage_users', 'manage_trades', 'manage_transactions', 'manage_kyc', 'market_control', 'manage_admins'] : [],
+          balance: parseFloat(createUserBalance) || 10000
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert('Account created successfully!');
+        setShowCreateUser(false);
+        setCreateUserEmail('');
+        setCreateUserPassword('');
+        setCreateUserDisplayName('');
+        setCreateUserRole('user');
+        setCreateUserPermissions([]);
+        setCreateUserBalance('10000');
+        fetchAll();
+      } else {
+        alert(data.error || 'Failed to create account');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error creating account');
+    }
+  };
+
+  const handleSavePermissions = async () => {
+    if (!selectedPermUser) return;
+    try {
+      const res = await fetch(`${API}/api/admin/users/${selectedPermUser._id}/permissions`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-email': user?.email || ''
+        },
+        body: JSON.stringify({
+          role: selectedPermRole,
+          permissions: selectedPermRole === 'admin' ? selectedPermList : selectedPermRole === 'owner' ? ['manage_users', 'manage_trades', 'manage_transactions', 'manage_kyc', 'market_control', 'manage_admins'] : []
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert('Permissions updated successfully!');
+        setShowPermissionsModal(false);
+        setSelectedPermUser(null);
+        fetchAll();
+      } else {
+        alert(data.error || 'Failed to update permissions');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error updating permissions');
+    }
+  };
+
+  const handleTransferOwnership = async (toUserId: string) => {
+    if (!confirm('Are you absolutely sure you want to grant OWNER status to this user? They will have full system access, including managing other owners.')) return;
+    try {
+      const res = await fetch(`${API}/api/admin/users/transfer-ownership`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-email': user?.email || ''
+        },
+        body: JSON.stringify({ toUserId })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert('Ownership granted successfully!');
+        onUserUpdate();
+        fetchAll();
+      } else {
+        alert(data.error || 'Failed to transfer ownership');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error transferring ownership');
+    }
+  };
+
+  const handleAddBinaryOption = async () => {
+    if (!newBinaryDuration || !newBinaryLabel || !newBinaryCommission) {
+      alert('Please fill in all binary settings fields');
+      return;
+    }
+    try {
+      const res = await fetch(`${API}/api/admin/binary/options`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-email': user?.email || ''
+        },
+        body: JSON.stringify({
+          duration: Number(newBinaryDuration),
+          label: newBinaryLabel,
+          commission: Number(newBinaryCommission)
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert('Binary Option added successfully!');
+        setNewBinaryDuration('');
+        setNewBinaryLabel('');
+        setNewBinaryCommission('');
+        fetchAll();
+      } else {
+        alert(data.error || 'Failed to add binary option');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error adding binary option');
+    }
+  };
+
+  const handleDeleteBinaryOption = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this Binary Option?')) return;
+    try {
+      const res = await fetch(`${API}/api/admin/binary/options/${id}`, {
+        method: 'DELETE',
+        headers: { 'x-user-email': user?.email || '' }
+      });
+      if (res.ok) {
+        alert('Binary Option deleted.');
+        fetchAll();
+      } else {
+        alert('Failed to delete option.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error deleting option');
     }
   };
 
@@ -216,7 +424,23 @@ export default function AdminPanel() {
     withdrawals: transactions.filter(t => t.type === 'withdrawal' && new Date(t.timestamp).getDay() === (i+1)%7).reduce((s,t) => s+t.amount, 0),
   }));
   const typeColors: Record<string, string> = { crypto: '#f97316', forex: '#22c55e', stock: '#3b82f6', commodity: '#eab308' };
-  const tradesByType = Object.entries(trades.reduce((acc: any, t) => { const type = t.assetId?.includes('usd') || t.assetId?.includes('jpy') ? 'forex' : ['aapl','googl','tsla','nvda','amzn'].includes(t.assetId) ? 'stock' : ['gold','silver','oil'].includes(t.assetId) ? 'commodity' : 'crypto'; acc[type] = (acc[type] || 0) + 1; return acc; }, {})).map(([name, value]) => ({ name, value, color: typeColors[name] || '#888' }));
+  const tradesByType = Object.entries(
+    trades.reduce((acc: Record<string, number>, t) => {
+      const type = t.assetId?.includes('usd') || t.assetId?.includes('jpy') 
+        ? 'forex' 
+        : ['aapl','googl','tsla','nvda','amzn'].includes(t.assetId) 
+          ? 'stock' 
+          : ['gold','silver','oil'].includes(t.assetId) 
+            ? 'commodity' 
+            : 'crypto';
+      acc[type] = (acc[type] || 0) + 1;
+      return acc;
+    }, Object.create(null))
+  ).map(([name, value]) => ({ 
+    name, 
+    value, 
+    color: Object.prototype.hasOwnProperty.call(typeColors, name) ? typeColors[name] : '#888' 
+  }));
 
   const tabs: { id: Tab; label: string; icon: any }[] = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
@@ -401,19 +625,27 @@ export default function AdminPanel() {
       {/* ── USERS ── */}
       {activeTab === 'users' && (
         <motion.div variants={itemVariants} className="bg-[#151619] rounded-3xl border border-white/5 p-8">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
-              <input type="text" placeholder="Search users..." value={search} onChange={e => setSearch(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-orange-500/50 font-mono text-sm" />
+          <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+            <div className="flex items-center gap-4 flex-1 max-w-sm">
+              <div className="relative flex-1">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+                <input type="text" placeholder="Search users..." value={search} onChange={e => setSearch(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-orange-500/50 font-mono text-sm" />
+              </div>
+              <span className="text-xs font-mono text-white/30 px-3 py-1.5 bg-white/5 rounded-xl border border-white/10 shrink-0">{filteredUsers.length} users</span>
             </div>
-            <span className="text-xs font-mono text-white/30 px-3 py-1.5 bg-white/5 rounded-xl border border-white/10">{filteredUsers.length} users</span>
+            {(mongoUser?.role === 'owner' || mongoUser?.permissions?.includes('manage_admins') || mongoUser?.permissions?.includes('manage_users') || user?.email === 'siam579214@gmail.com') && (
+              <button onClick={() => setShowCreateUser(true)}
+                className="flex items-center gap-2 px-5 py-3 bg-orange-500 hover:bg-orange-400 text-black font-bold rounded-2xl text-xs transition-all uppercase shadow-lg shadow-orange-500/10">
+                <Plus className="w-4 h-4" /> Create Account
+              </button>
+            )}
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-white/5 text-[10px] uppercase tracking-widest text-white/30 font-mono">
-                  {['User', 'Email', 'Balance', 'Joined', 'Actions'].map(h => <th key={h} className="px-4 py-3 font-normal">{h}</th>)}
+                  {['User', 'Email', 'Role', 'Balance', 'Joined', 'Actions'].map(h => <th key={h} className="px-4 py-3 font-normal">{h}</th>)}
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/[0.04]">
@@ -429,6 +661,15 @@ export default function AdminPanel() {
                     </td>
                     <td className="px-4 py-4 text-xs text-white/40 font-mono">{u.email}</td>
                     <td className="px-4 py-4">
+                      {u.role === 'owner' ? (
+                        <span className="px-2.5 py-0.5 bg-yellow-500/15 text-yellow-500 text-[9px] font-bold rounded-full uppercase tracking-wider border border-yellow-500/25">Owner</span>
+                      ) : u.role === 'admin' ? (
+                        <span className="px-2.5 py-0.5 bg-orange-500/15 text-orange-400 text-[9px] font-bold rounded-full uppercase tracking-wider border border-orange-500/25">Admin</span>
+                      ) : (
+                        <span className="px-2.5 py-0.5 bg-blue-500/15 text-blue-400 text-[9px] font-bold rounded-full uppercase tracking-wider border border-blue-500/25">User</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-4">
                       {editingUser === u._id ? (
                         <div className="flex items-center gap-2">
                           <input type="number" value={newBalance} onChange={e => setNewBalance(Number(e.target.value))}
@@ -439,16 +680,41 @@ export default function AdminPanel() {
                       ) : (
                         <div className="flex items-center gap-2">
                           <span className="font-mono font-bold text-sm text-orange-400">${u.balance?.toLocaleString()}</span>
-                          <button onClick={() => { setEditingUser(u._id); setNewBalance(u.balance); }} className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-white/20 hover:text-white"><Edit2 className="w-3 h-3" /></button>
+                          {editingUser === null && (mongoUser?.role === 'owner' || mongoUser?.permissions?.includes('manage_transactions')) && (
+                            <button onClick={() => { setEditingUser(u._id); setNewBalance(u.balance); }} className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-white/20 hover:text-white"><Edit2 className="w-3 h-3" /></button>
+                          )}
                         </div>
                       )}
                     </td>
                     <td className="px-4 py-4 text-xs text-white/30 font-mono">{new Date(u.createdAt).toLocaleDateString()}</td>
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-2">
-                        <button onClick={() => openUserDetail(u)} className="p-2 bg-blue-500/10 hover:bg-blue-500/20 rounded-xl border border-blue-500/10 transition-all"><Eye className="w-3.5 h-3.5 text-blue-400" /></button>
-                        <button onClick={() => { setFundModal(u); setFundType('deposit'); setFundAmount(''); }} className="p-2 bg-green-500/10 hover:bg-green-500/20 rounded-xl border border-green-500/10 transition-all"><Plus className="w-3.5 h-3.5 text-green-400" /></button>
-                        <button onClick={() => deleteUser(u._id)} className="p-2 bg-red-500/10 hover:bg-red-500/20 rounded-xl border border-red-500/10 transition-all"><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
+                        <button onClick={() => openUserDetail(u)} className="p-2 bg-blue-500/10 hover:bg-blue-500/20 rounded-xl border border-blue-500/10 transition-all" title="View Details"><Eye className="w-3.5 h-3.5 text-blue-400" /></button>
+                        
+                        {/* Fund */}
+                        {(mongoUser?.role === 'owner' || mongoUser?.permissions?.includes('manage_transactions')) && (
+                          <button onClick={() => { setFundModal(u); setFundType('deposit'); setFundAmount(''); }} className="p-2 bg-green-500/10 hover:bg-green-500/20 rounded-xl border border-green-500/10 transition-all" title="Fund Account"><Plus className="w-3.5 h-3.5 text-green-400" /></button>
+                        )}
+                        
+                        {/* Edit Permissions / Roles */}
+                        {(mongoUser?.role === 'owner' || mongoUser?.permissions?.includes('manage_admins')) && (
+                          <button onClick={() => {
+                            setSelectedPermUser(u);
+                            setSelectedPermRole(u.role || 'user');
+                            setSelectedPermList(u.permissions || []);
+                            setShowPermissionsModal(true);
+                          }} className="p-2 bg-purple-500/10 hover:bg-purple-500/20 rounded-xl border border-purple-500/10 transition-all" title="Manage Permissions"><Shield className="w-3.5 h-3.5 text-purple-400" /></button>
+                        )}
+
+                        {/* Transfer Ownership */}
+                        {mongoUser?.role === 'owner' && u.role !== 'owner' && (
+                          <button onClick={() => handleTransferOwnership(u._id)} className="p-2 bg-yellow-500/10 hover:bg-yellow-500/20 rounded-xl border border-yellow-500/10 transition-all" title="Grant Ownership"><RefreshCcw className="w-3.5 h-3.5 text-yellow-500" /></button>
+                        )}
+
+                        {/* Delete */}
+                        {(mongoUser?.role === 'owner' || mongoUser?.permissions?.includes('manage_admins') || (u.role === 'user' && mongoUser?.permissions?.includes('manage_users'))) && (
+                          <button onClick={() => deleteUser(u._id)} className="p-2 bg-red-500/10 hover:bg-red-500/20 rounded-xl border border-red-500/10 transition-all" title="Delete User"><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -805,6 +1071,67 @@ export default function AdminPanel() {
               </div>
             </div>
           </div>
+
+          {/* Binary Options Management */}
+          {(mongoUser?.role === 'owner' || mongoUser?.permissions?.includes('market_control') || user?.email === 'siam579214@gmail.com') && (
+            <div className="bg-[#151619] rounded-3xl border border-white/5 p-8">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-xl font-bold">Binary Option Configuration</h3>
+                  <p className="text-[10px] text-white/30 font-mono mt-0.5 uppercase tracking-wider">Configure active durations and commissions</p>
+                </div>
+                <Zap className="w-5 h-5 text-orange-500 animate-pulse" />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div>
+                  <label className="text-[9px] font-mono uppercase tracking-widest text-white/30 mb-2 block">Duration (seconds)</label>
+                  <input type="number" value={newBinaryDuration} onChange={e => setNewBinaryDuration(e.target.value)} placeholder="e.g. 120"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 font-mono text-sm focus:outline-none focus:border-orange-500/50" />
+                </div>
+                <div>
+                  <label className="text-[9px] font-mono uppercase tracking-widest text-white/30 mb-2 block">Display Label</label>
+                  <input type="text" value={newBinaryLabel} onChange={e => setNewBinaryLabel(e.target.value)} placeholder="e.g. 2m"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-orange-500/50" />
+                </div>
+                <div>
+                  <label className="text-[9px] font-mono uppercase tracking-widest text-white/30 mb-2 block">Commission Payout %</label>
+                  <div className="flex gap-2">
+                    <input type="number" value={newBinaryCommission} onChange={e => setNewBinaryCommission(e.target.value)} placeholder="e.g. 40"
+                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 font-mono text-sm focus:outline-none focus:border-orange-500/50" />
+                    <button onClick={handleAddBinaryOption}
+                      className="px-5 bg-orange-500 hover:bg-orange-400 text-black font-bold rounded-xl text-xs uppercase tracking-wider transition-all shadow-lg shadow-orange-500/10">Add</button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-[10px] font-mono uppercase tracking-widest text-white/20 mb-2">Active Configurations ({binaryOptions.length})</p>
+                {binaryOptions.length === 0 ? (
+                  <p className="text-xs text-white/30 font-mono italic">No custom binary options configured.</p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    {binaryOptions.map(opt => (
+                      <div key={opt._id} className="p-4 bg-white/[0.03] hover:bg-white/[0.05] rounded-2xl border border-white/5 flex items-center justify-between transition-all">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center border border-orange-500/20">
+                            <Clock className="w-4 h-4 text-orange-500" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold">{opt.label}</p>
+                            <p className="text-[10px] text-orange-400 font-mono">+{opt.commission}% profit</p>
+                          </div>
+                        </div>
+                        <button onClick={() => handleDeleteBinaryOption(opt._id)} className="p-2 bg-red-500/10 hover:bg-red-500/25 rounded-xl border border-red-500/10 transition-all hover:text-red-400 text-red-500/70" title="Delete Option">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </motion.div>
       )}
 
@@ -997,6 +1324,186 @@ export default function AdminPanel() {
               <button onClick={() => setShowAddCoin(false)} className="flex-1 py-3 bg-white/5 rounded-2xl text-xs font-bold hover:bg-white/10 transition-all">Cancel</button>
               <button onClick={handleAddCoin} className="flex-1 py-3 bg-orange-500 hover:bg-orange-400 text-black rounded-2xl text-xs font-bold transition-all shadow-lg shadow-orange-500/20">
                 Add Coin Listing
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* ── CREATE USER MODAL ── */}
+      {showCreateUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-[#151619] rounded-3xl border border-white/10 p-8 w-full max-w-md shadow-2xl overflow-y-auto max-h-[90vh] scrollbar-hide">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="font-bold text-lg flex items-center gap-2 text-orange-500 uppercase font-mono tracking-wide">
+                <Plus className="w-5 h-5" /> Create Account
+              </h3>
+              <button onClick={() => setShowCreateUser(false)} className="p-2 text-white/30 hover:text-white rounded-xl hover:bg-white/5 transition-all"><X className="w-4 h-4" /></button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="text-[9px] font-mono uppercase tracking-widest text-white/30 mb-1.5 block">Full Name / Display Name</label>
+                <input type="text" value={createUserDisplayName} onChange={e => setCreateUserDisplayName(e.target.value)} placeholder="e.g. John Doe"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-orange-500/50" />
+              </div>
+
+              <div>
+                <label className="text-[9px] font-mono uppercase tracking-widest text-white/30 mb-1.5 block">Email Address</label>
+                <input type="email" value={createUserEmail} onChange={e => setCreateUserEmail(e.target.value)} placeholder="e.g. user@example.com"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 font-mono text-xs text-white focus:outline-none focus:border-orange-500/50" />
+              </div>
+
+              <div>
+                <label className="text-[9px] font-mono uppercase tracking-widest text-white/30 mb-1.5 block">Initial Password</label>
+                <input type="password" value={createUserPassword} onChange={e => setCreateUserPassword(e.target.value)} placeholder="••••••••"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-orange-500/50" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[9px] font-mono uppercase tracking-widest text-white/30 mb-1.5 block">Account Role</label>
+                  <select value={createUserRole} onChange={e => {
+                    const r = e.target.value as any;
+                    setCreateUserRole(r);
+                    if (r === 'owner') {
+                      setCreateUserPermissions(['manage_users', 'manage_trades', 'manage_transactions', 'manage_kyc', 'market_control', 'manage_admins']);
+                    } else if (r === 'user') {
+                      setCreateUserPermissions([]);
+                    }
+                  }}
+                    className="w-full bg-[#0d0d0f] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-orange-500/50 cursor-pointer appearance-none">
+                    <option value="user">Standard User</option>
+                    <option value="admin">Administrator</option>
+                    {mongoUser?.role === 'owner' && <option value="owner">System Owner</option>}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[9px] font-mono uppercase tracking-widest text-white/30 mb-1.5 block">Initial Balance ($)</label>
+                  <input type="number" value={createUserBalance} onChange={e => setCreateUserBalance(e.target.value)} placeholder="10000"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 font-mono text-xs text-white focus:outline-none focus:border-orange-500/50" />
+                </div>
+              </div>
+
+              {createUserRole === 'admin' && (
+                <div className="p-4 bg-white/5 rounded-2xl border border-white/5 space-y-3">
+                  <p className="text-[10px] font-mono uppercase tracking-widest text-white/40 font-bold">Admin Permissions</p>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    {[
+                      { id: 'manage_users', label: 'Manage Users' },
+                      { id: 'manage_trades', label: 'Manage Trades' },
+                      { id: 'manage_transactions', label: 'Manage Txns' },
+                      { id: 'manage_kyc', label: 'Manage KYC' },
+                      { id: 'market_control', label: 'Market Control' },
+                      { id: 'manage_admins', label: 'Manage Admins' },
+                    ].map(p => {
+                      const active = createUserPermissions.includes(p.id);
+                      return (
+                        <button key={p.id} type="button"
+                          onClick={() => {
+                            if (active) {
+                              setCreateUserPermissions(prev => prev.filter(x => x !== p.id));
+                            } else {
+                              setCreateUserPermissions(prev => [...prev, p.id]);
+                            }
+                          }}
+                          className={cn("py-2 px-3 rounded-xl text-[10px] text-left font-semibold border transition-all flex items-center justify-between",
+                            active ? "bg-orange-500/10 border-orange-500/50 text-orange-400" : "bg-[#0d0d0f] border-transparent text-white/40 hover:text-white"
+                          )}>
+                          <span>{p.label}</span>
+                          <span className={cn("w-1.5 h-1.5 rounded-full shrink-0 ml-1.5", active ? "bg-orange-500 animate-pulse" : "bg-white/10")} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowCreateUser(false)} className="flex-1 py-3 bg-white/5 rounded-2xl text-xs font-bold hover:bg-white/10 transition-all">Cancel</button>
+              <button onClick={handleCreateUser} className="flex-1 py-3 bg-orange-500 hover:bg-orange-400 text-black rounded-2xl text-xs font-bold transition-all shadow-lg shadow-orange-500/20">
+                Create Account
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* ── PERMISSIONS MODAL ── */}
+      {showPermissionsModal && selectedPermUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-[#151619] rounded-3xl border border-white/10 p-8 w-full max-w-md shadow-2xl overflow-y-auto max-h-[90vh] scrollbar-hide">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="font-bold text-lg flex items-center gap-2 text-purple-400 uppercase font-mono tracking-wide">
+                <Shield className="w-5 h-5" /> Edit Access Control
+              </h3>
+              <button onClick={() => { setShowPermissionsModal(false); setSelectedPermUser(null); }} className="p-2 text-white/30 hover:text-white rounded-xl hover:bg-white/5 transition-all"><X className="w-4 h-4" /></button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="p-3 bg-white/5 rounded-xl border border-white/5 text-xs text-white/60 font-mono">
+                <p className="font-bold text-white text-sm">{selectedPermUser.displayName || 'Trader'}</p>
+                <p className="opacity-60">{selectedPermUser.email}</p>
+              </div>
+
+              <div>
+                <label className="text-[9px] font-mono uppercase tracking-widest text-white/30 mb-1.5 block">Access Level Role</label>
+                <select value={selectedPermRole} onChange={e => {
+                  const r = e.target.value as any;
+                  setSelectedPermRole(r);
+                  if (r === 'owner') {
+                    setSelectedPermList(['manage_users', 'manage_trades', 'manage_transactions', 'manage_kyc', 'market_control', 'manage_admins']);
+                  } else if (r === 'user') {
+                    setSelectedPermList([]);
+                  }
+                }}
+                  className="w-full bg-[#0d0d0f] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-purple-500/50 cursor-pointer appearance-none">
+                  <option value="user">Standard User</option>
+                  <option value="admin">Administrator</option>
+                  {mongoUser?.role === 'owner' && <option value="owner">System Owner</option>}
+                </select>
+              </div>
+
+              {selectedPermRole === 'admin' && (
+                <div className="p-4 bg-white/5 rounded-2xl border border-white/5 space-y-3">
+                  <p className="text-[10px] font-mono uppercase tracking-widest text-white/40 font-bold">Admin Permissions</p>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    {[
+                      { id: 'manage_users', label: 'Manage Users' },
+                      { id: 'manage_trades', label: 'Manage Trades' },
+                      { id: 'manage_transactions', label: 'Manage Txns' },
+                      { id: 'manage_kyc', label: 'Manage KYC' },
+                      { id: 'market_control', label: 'Market Control' },
+                      { id: 'manage_admins', label: 'Manage Admins' },
+                    ].map(p => {
+                      const active = selectedPermList.includes(p.id);
+                      return (
+                        <button key={p.id} type="button"
+                          onClick={() => {
+                            if (active) {
+                              setSelectedPermList(prev => prev.filter(x => x !== p.id));
+                            } else {
+                              setSelectedPermList(prev => [...prev, p.id]);
+                            }
+                          }}
+                          className={cn("py-2 px-3 rounded-xl text-[10px] text-left font-semibold border transition-all flex items-center justify-between",
+                            active ? "bg-purple-500/10 border-purple-500/50 text-purple-400" : "bg-[#0d0d0f] border-transparent text-white/40 hover:text-white"
+                          )}>
+                          <span>{p.label}</span>
+                          <span className={cn("w-1.5 h-1.5 rounded-full shrink-0 ml-1.5", active ? "bg-purple-500 animate-pulse" : "bg-white/10")} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => { setShowPermissionsModal(false); setSelectedPermUser(null); }} className="flex-1 py-3 bg-white/5 rounded-2xl text-xs font-bold hover:bg-white/10 transition-all">Cancel</button>
+              <button onClick={handleSavePermissions} className="flex-1 py-3 bg-purple-500 hover:bg-purple-400 text-white rounded-2xl text-xs font-bold transition-all shadow-lg shadow-purple-500/20">
+                Save Access
               </button>
             </div>
           </motion.div>

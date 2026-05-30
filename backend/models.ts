@@ -8,6 +8,9 @@ const userSchema = new mongoose.Schema({
   displayName: { type: String },
   photoURL: { type: String },
   balance: { type: Number, default: 10000 },
+  role: { type: String, enum: ['user', 'admin', 'owner'], default: 'user' },
+  permissions: { type: [String], default: [] },
+  isOwner: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -66,6 +69,13 @@ const manipulationSchema = new mongoose.Schema({
   direction: { type: String, enum: ['up', 'down', 'normal'], default: 'normal' },
   startTime: { type: Date, required: true },
   endTime: { type: Date, required: true }
+});
+
+const binaryOptionSchema = new mongoose.Schema({
+  duration: { type: Number, required: true, unique: true },
+  label: { type: String, required: true },
+  commission: { type: Number, required: true },
+  createdAt: { type: Date, default: Date.now }
 });
 
 // ── LOCAL JSON FALLBACK MOCK SYSTEM ──────────────────────────────────────────
@@ -178,11 +188,21 @@ class MockModel {
   }
 
   async create(doc: any) {
+    const SCHEMA_DEFAULTS: Record<string, any> = {
+      User: { balance: 10000, role: 'user', permissions: [], isOwner: false },
+      Transaction: { status: 'completed' },
+      Trade: { lots: 1, multiplier: 1, profit: 0, status: 'open' },
+      KYC: { status: 'pending' },
+      Manipulation: { direction: 'normal' },
+      BinaryOption: { commission: 25 }
+    };
+    const defaults = SCHEMA_DEFAULTS[this.name] || {};
     const items = this.getCollection();
     const newDoc = {
       _id: doc._id || Math.random().toString(36).substring(2, 9),
       createdAt: new Date().toISOString(),
       timestamp: new Date().toISOString(),
+      ...defaults,
       ...doc
     };
     items.push(newDoc);
@@ -329,3 +349,6 @@ export const CustomAsset = createSmartModel('CustomAsset', customAssetModel) as 
 
 const manipulationModel = mongoose.model('Manipulation', manipulationSchema);
 export const Manipulation = createSmartModel('Manipulation', manipulationModel) as any;
+
+const binaryOptionModel = mongoose.model('BinaryOption', binaryOptionSchema);
+export const BinaryOption = createSmartModel('BinaryOption', binaryOptionModel) as any;

@@ -446,7 +446,7 @@ function MainApp() {
             {/* Right tabs */}
             {[
               { id: 'profile', label: 'Profile', icon: UserIcon },
-              ...(user?.email === ADMIN_EMAIL ? [{ id: 'admin', label: 'Admin', icon: ShieldAlert }] : [])
+              ...(mongoUser?.role === 'admin' || mongoUser?.role === 'owner' || user?.email === ADMIN_EMAIL ? [{ id: 'admin', label: 'Admin', icon: ShieldAlert }] : [])
             ].map(tab => (
               <button key={tab.id} onClick={() => setActiveTab(tab.id as any)}
                 className={cn('flex items-center gap-2 px-4 py-1.5 rounded-xl text-xs font-bold transition-all',
@@ -1236,9 +1236,9 @@ function MainApp() {
                 </motion.div>
               )}
 
-              {activeTab === 'admin' && user?.email === ADMIN_EMAIL && (
+              {(activeTab === 'admin' && (mongoUser?.role === 'admin' || mongoUser?.role === 'owner' || user?.email === ADMIN_EMAIL)) && (
                 <motion.div key="admin" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                  <AdminPanel />
+                  <AdminPanel user={user} mongoUser={mongoUser} onUserUpdate={() => { if (user?.email) fetchUserData(user.email); }} />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -1299,7 +1299,7 @@ function MainApp() {
         </button>
 
         {/* Admin (conditional) */}
-        {user?.email === ADMIN_EMAIL && (
+        {(mongoUser?.role === 'admin' || mongoUser?.role === 'owner' || user?.email === ADMIN_EMAIL) && (
           <button onClick={() => setActiveTab('admin')}
             className={cn('flex flex-col items-center gap-1 px-3 py-1.5 rounded-2xl transition-all duration-200 min-w-[52px]',
               activeTab === 'admin' ? 'text-orange-400' : 'text-white/30')}>
