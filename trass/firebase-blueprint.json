@@ -1,0 +1,60 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Stores user balance and trading stats",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "User unique ID" },
+        "displayName": { "type": "string", "description": "User display name" },
+        "email": { "type": "string", "description": "User email" },
+        "balance": { "type": "number", "description": "Current virtual balance" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Account creation time" }
+      },
+      "required": ["uid", "balance"]
+    },
+    "Trade": {
+      "title": "Trade Record",
+      "description": "Stores individual trade details",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "User ID who placed the trade" },
+        "assetId": { "type": "string", "description": "Asset identifier" },
+        "assetName": { "type": "string", "description": "Asset name" },
+        "type": { "type": "string", "enum": ["buy", "sell"], "description": "Trade type" },
+        "entryPrice": { "type": "number", "description": "Price at entry" },
+        "amount": { "type": "number", "description": "Trade amount in USD" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Trade execution time" },
+        "status": { "type": "string", "enum": ["open", "closed"], "description": "Trade status" }
+      },
+      "required": ["uid", "assetId", "type", "entryPrice", "amount", "timestamp"]
+    },
+    "Transaction": {
+      "title": "Financial Transaction",
+      "description": "Stores deposit and withdrawal records",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "User ID" },
+        "type": { "type": "string", "enum": ["deposit", "withdrawal"], "description": "Transaction type" },
+        "amount": { "type": "number", "description": "Transaction amount" },
+        "status": { "type": "string", "enum": ["pending", "completed", "failed"], "description": "Transaction status" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Transaction time" }
+      },
+      "required": ["uid", "type", "amount", "status", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile data"
+    },
+    "/trades/{tradeId}": {
+      "schema": "Trade",
+      "description": "Global trade records"
+    },
+    "/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Financial transaction records"
+    }
+  }
+}
