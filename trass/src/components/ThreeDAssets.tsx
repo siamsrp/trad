@@ -390,7 +390,7 @@ export const StockCard3D = ({
           <div className="space-y-10 relative z-10">
             <div className="space-y-4 text-center">
               <h3 className="text-2xl font-black tracking-tight text-orange-500 leading-tight">
-                এই ওয়েবসাইট ট্রেডিং-এর জন্য সবচেয়ে ভালো প্ল্যাটফর্ম
+                The World's Most Advanced Trading Simulation Platform
               </h3>
               <div className="w-12 h-1 bg-orange-500/50 mx-auto rounded-full" />
             </div>

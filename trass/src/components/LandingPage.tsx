@@ -66,7 +66,7 @@ export default function LandingPage({
               <Activity className="text-black w-6 h-6" />
             </div>
             <div>
-              <h1 className="font-bold text-xl tracking-tighter uppercase italic">TradeX <span className="text-orange-500">Pro</span></h1>
+              <h1 className="font-bold text-xl tracking-tighter uppercase italic">Rubicon <span className="text-orange-500">Liberty</span></h1>
               <p className="text-[8px] uppercase tracking-[0.4em] text-white/40 font-black">Simulation Engine</p>
             </div>
           </div>
@@ -244,7 +244,7 @@ export default function LandingPage({
                     <div className="w-3 h-3 rounded-full bg-yellow-500/50" />
                     <div className="w-3 h-3 rounded-full bg-green-500/50" />
                   </div>
-                  <div className="text-[10px] font-mono text-white/40 uppercase tracking-widest">TradeX_Terminal_v4.0.1</div>
+                  <div className="text-[10px] font-mono text-white/40 uppercase tracking-widest">Rubicon_Terminal_v4.0.1</div>
                 </div>
                 <div className="p-8 font-mono text-xs space-y-4 max-h-[400px] overflow-y-auto scrollbar-hide">
                   {[
@@ -650,7 +650,7 @@ export default function LandingPage({
               {
                 name: "Sarah Chen",
                 role: "Finance Student",
-                text: "TradeX Pro is an essential tool for anyone learning the markets. The interface is intuitive and professional."
+                text: "Rubicon Liberty is an essential tool for anyone learning the markets. The interface is intuitive and professional."
               },
               {
                 name: "Marcus Thorne",

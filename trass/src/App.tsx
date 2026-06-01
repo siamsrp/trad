@@ -333,7 +333,7 @@ function MainApp() {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <Activity className="w-12 h-12 text-orange-500 animate-pulse" />
+          <TrendingUp className="w-12 h-12 text-orange-500 animate-pulse" />
           <p className="text-xs font-mono uppercase tracking-[0.3em] text-white/40">Initializing Engine...</p>
         </div>
       </div>
@@ -385,11 +385,11 @@ function MainApp() {
       <header className="h-14 md:h-16 border-b border-white/10 flex items-center justify-between px-3 md:px-6 bg-[#0a0a0a]/80 backdrop-blur-md sticky top-0 z-50">
         <div className="flex items-center gap-3 md:gap-8">
           <div className="flex items-center gap-2 md:gap-3">
-            <div className="w-8 h-8 md:w-10 md:h-10 bg-orange-500 rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/20">
-              <Activity className="text-black w-4 h-4 md:w-6 md:h-6" />
+            <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-tr from-[#f97316] to-[#facc15] rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/20">
+              <TrendingUp className="text-black w-4 h-4 md:w-6 md:h-6" />
             </div>
             <div className="hidden sm:block">
-              <h1 className="font-bold text-base md:text-xl tracking-tight">TradeX <span className="text-orange-500">Pro</span></h1>
+              <h1 className="font-bold text-base md:text-xl tracking-tight uppercase">Rubicon <span className="text-orange-500">Liberty</span></h1>
               <p className="text-[9px] uppercase tracking-[0.2em] text-white/40 font-mono hidden md:block">Simulation Engine v1.0</p>
             </div>
           </div>

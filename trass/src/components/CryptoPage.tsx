@@ -77,7 +77,7 @@ export default function CryptoPage({ onBack, onStartTrading }: CryptoPageProps) 
             <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/20 group-hover:scale-110 transition-transform">
               <Activity className="text-black w-6 h-6" />
             </div>
-            <span className="font-bold text-2xl tracking-tighter uppercase">TradeX <span className="text-orange-500">Pro</span></span>
+            <span className="font-bold text-2xl tracking-tighter uppercase">Rubicon <span className="text-orange-500">Liberty</span></span>
           </button>
           <div className="flex items-center gap-4">
             <button 
@@ -340,7 +340,7 @@ export default function CryptoPage({ onBack, onStartTrading }: CryptoPageProps) 
                     <div className="w-3 h-3 rounded-full bg-yellow-500/50" />
                     <div className="w-3 h-3 rounded-full bg-green-500/50" />
                   </div>
-                  <div className="text-[10px] font-mono text-white/40 uppercase tracking-widest">TradeX_Terminal_v4.0.1</div>
+                  <div className="text-[10px] font-mono text-white/40 uppercase tracking-widest">Rubicon_Terminal_v4.0.1</div>
                 </div>
                 <div className="p-8 font-mono text-xs space-y-4 max-h-[400px] overflow-y-auto scrollbar-hide">
                   {[

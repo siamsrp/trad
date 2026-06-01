@@ -79,7 +79,7 @@ export default function ForexPage({ onBack, onStartTrading }: ForexPageProps) {
             <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/20 group-hover:scale-110 transition-transform">
               <Activity className="text-black w-6 h-6" />
             </div>
-            <span className="font-bold text-2xl tracking-tighter uppercase">TradeX <span className="text-orange-500">Pro</span></span>
+            <span className="font-bold text-2xl tracking-tighter uppercase">Rubicon <span className="text-orange-500">Liberty</span></span>
           </button>
           <div className="flex items-center gap-4">
             <button 

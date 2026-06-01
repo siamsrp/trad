@@ -1,4 +1,4 @@
-# TradeX Pro 📈
+# RUBICON LIBERTY 📈
 
 A modern, institutional-grade high-frequency trading simulation engine and platform. Built with a robust Express/Socket.io backend and a premium React/Vite/Tailwind frontend.
 
@@ -73,7 +73,7 @@ This is a monorepo containing both the frontend and the backend applications:
 
 ## ⚡ Vercel Deployment Guide (Frontend)
 
-To deploy the **TradeX Pro** frontend to **Vercel**, follow these simple steps:
+To deploy the **RUBICON LIBERTY** frontend to **Vercel**, follow these simple steps:
 
 1. **Import the repository** into Vercel from GitHub.
 2. In the configuration settings:

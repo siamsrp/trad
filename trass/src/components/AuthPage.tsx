@@ -184,7 +184,7 @@ export default function AuthPage({ onBack }: AuthPageProps) {
               <Activity className="text-black w-6 h-6" />
             </motion.div>
             <div>
-              <h1 className="font-bold text-2xl tracking-tighter">TradeX <span className="text-orange-500">Pro</span></h1>
+              <h1 className="font-bold text-2xl tracking-tighter">Rubicon <span className="text-orange-500">Liberty</span></h1>
               <p className="text-[8px] uppercase tracking-[0.4em] text-white/20 font-mono">Terminal v1.0.4</p>
             </div>
           </div>
@@ -264,7 +264,7 @@ export default function AuthPage({ onBack }: AuthPageProps) {
                   transition={{ duration: 0.3 }}
                 >
                   <h3 className="text-4xl font-bold tracking-tighter">
-                    {isLogin ? 'Welcome Back' : 'Join TradeX'}
+                    {isLogin ? 'Welcome Back' : 'Join Rubicon'}
                   </h3>
                   <p className="text-white/40 font-light text-base">
                     {isLogin ? 'Access your trading terminal' : 'Create your free simulation account'}

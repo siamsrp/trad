@@ -32,7 +32,7 @@ const askQuestion = (query: string): Promise<string> => {
 };
 
 async function main() {
-  console.log("=== TradeX Pro - Admin Credentials Manager ===");
+  console.log("=== Rubicon Liberty - Admin Credentials Manager ===");
 
   // Read current configuration
   const appTsxPath = path.resolve('src/App.tsx');

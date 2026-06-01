@@ -1061,7 +1061,7 @@ export default function AdminPanel({ user, mongoUser, onUserUpdate }: AdminPanel
                   { label: 'Backend', value: API },
                   { label: 'Database', value: 'MongoDB Atlas' },
                   { label: 'Auth', value: 'Firebase Auth' },
-                  { label: 'Version', value: 'TradeX Pro v1.0' },
+                  { label: 'Version', value: 'Rubicon Liberty v1.0' },
                 ].map((item, i) => (
                   <div key={i} className="flex items-center justify-between p-4 bg-white/[0.03] rounded-2xl border border-white/5">
                     <span className="text-[10px] font-mono uppercase tracking-widest text-white/30">{item.label}</span>

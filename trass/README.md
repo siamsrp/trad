@@ -41,5 +41,5 @@ This app is ready for deployment on platforms like Vercel, Netlify, or Firebase 
 3. Set the output directory to `dist`.
 4. Add your environment variables (Firebase config, Gemini API key).
 
-**Deployment Link:** [https://tradex-pro-simulation.vercel.app](https://tradex-pro-simulation.vercel.app) *(Example link)*
+**Deployment Link:** [https://rubicon-liberty-simulation.netlify.app](https://rubicon-liberty-simulation.netlify.app) *(Example link)*
 
