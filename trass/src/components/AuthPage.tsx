@@ -8,6 +8,7 @@ import {
 import Footer from './Footer';
 import { 
   auth, googleProvider, githubProvider, signInWithPopup, 
+  signInWithRedirect, getRedirectResult,
   createUserWithEmailAndPassword, signInWithEmailAndPassword, 
   updateProfile 
 } from '../firebase';
@@ -31,6 +32,34 @@ export default function AuthPage({ onBack }: AuthPageProps) {
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  React.useEffect(() => {
+    const handleRedirectResult = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result && result.user) {
+          console.log('Redirect sign-in success:', result.user.email);
+          setLoading(true);
+          // Sync with MongoDB backend
+          await fetch(`${API}/api/users/sync`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: result.user.email,
+              displayName: result.user.displayName || 'Trader',
+              photoURL: result.user.photoURL
+            })
+          });
+        }
+      } catch (err: any) {
+        console.error('Redirect sign-in error:', err);
+        setError(err.message || 'Redirect sign-in failed.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    handleRedirectResult();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,6 +113,17 @@ export default function AuthPage({ onBack }: AuthPageProps) {
       
     } catch (err: any) {
       if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') return;
+      if (err.code === 'auth/popup-blocked') {
+        console.log('Popup blocked. Falling back to Google redirect...');
+        try {
+          await signInWithRedirect(auth, googleProvider);
+          return;
+        } catch (redirectErr: any) {
+          console.error('Google redirect login error:', redirectErr);
+          setError('Sign-in popup was blocked. We tried redirecting, but that failed. Please allow popups or use Email/Password.');
+          return;
+        }
+      }
       console.error('Google login error:', err);
       setError(err.message || 'Google login failed. Please try again.');
     } finally {
@@ -112,6 +152,17 @@ export default function AuthPage({ onBack }: AuthPageProps) {
       
     } catch (err: any) {
       if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') return;
+      if (err.code === 'auth/popup-blocked') {
+        console.log('Popup blocked. Falling back to GitHub redirect...');
+        try {
+          await signInWithRedirect(auth, githubProvider);
+          return;
+        } catch (redirectErr: any) {
+          console.error('GitHub redirect login error:', redirectErr);
+          setError('Sign-in popup was blocked. We tried redirecting, but that failed. Please allow popups or use Email/Password.');
+          return;
+        }
+      }
       console.error('GitHub login error:', err);
       setError(err.message || 'GitHub login failed. Please try again.');
     } finally {

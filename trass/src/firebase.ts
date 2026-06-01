@@ -4,6 +4,8 @@ import {
   GoogleAuthProvider, 
   GithubAuthProvider,
   signInWithPopup, 
+  signInWithRedirect,
+  getRedirectResult,
   signOut, 
   onAuthStateChanged, 
   User,
@@ -30,6 +32,8 @@ export const githubProvider = new GithubAuthProvider();
 
 export { 
   signInWithPopup, 
+  signInWithRedirect,
+  getRedirectResult,
   signOut, 
   onAuthStateChanged, 
   createUserWithEmailAndPassword, 
