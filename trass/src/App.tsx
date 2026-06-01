@@ -600,6 +600,51 @@ function MainApp() {
 
               {activeTab === 'trade' && (
                 <motion.div key="trade" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
+                  {/* Horizontal Scrollable Market Assets at Top of Trade Page */}
+                  <div className="bg-[#151619] rounded-3xl border border-white/5 p-4 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-40 h-40 bg-orange-500/5 blur-[60px] rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+                    <div className="flex items-center justify-between mb-4 px-1 relative z-10">
+                      <div>
+                        <h2 className="text-sm font-bold tracking-tight">Market Assets</h2>
+                        <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-white/30 mt-0.5">Live Prices</p>
+                      </div>
+                    </div>
+                    <div className="flex overflow-x-auto space-x-3 scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] relative z-10">
+                      {assets.filter(a => !marketCategory || a.type === marketCategory).map(asset => {
+                        const isUp = (asset.history?.length ?? 0) > 1 && asset.history[asset.history.length - 1].price >= asset.history[asset.history.length - 2].price;
+                        return (
+                          <button
+                            key={asset.id}
+                            onClick={() => { setSelectedAsset(asset); setActiveTab('trade'); }}
+                            className={cn(
+                              'shrink-0 px-4 py-3 rounded-2xl border transition-all duration-300 flex flex-col items-center gap-2 group',
+                              selectedAsset?.id === asset.id
+                                ? 'bg-orange-500/10 border-orange-500/30 shadow-lg shadow-orange-500/5'
+                                : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.05] hover:border-white/10'
+                            )}
+                          >
+                            <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center p-2 border border-white/10">
+                              {ASSET_ICONS[asset.id]
+                                ? <img src={ASSET_ICONS[asset.id]} alt={asset.name} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                                : <Activity className="w-5 h-5 text-orange-500" />}
+                            </div>
+                            <div className="text-center">
+                              <p className="font-bold text-xs text-white truncate group-hover:text-orange-400 transition-colors">{asset.name}</p>
+                              <p className="text-[9px] font-mono text-white/30 uppercase">{asset.type}</p>
+                            </div>
+                            <span className={cn('font-mono text-xs font-bold', isUp ? 'text-green-400' : 'text-red-400')}>
+                              {asset.price.toLocaleString(undefined, { maximumFractionDigits: asset.type === 'forex' ? 4 : 2 })}
+                            </span>
+                            <span className={cn('flex items-center gap-0.5 text-[9px] font-mono font-bold', isUp ? 'text-green-500' : 'text-red-500')}>
+                              {isUp ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                              {isUp ? '+' : ''}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                   {/* Chart + Execution Panel */}
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 md:gap-4">
                   {/* Chart col */}
@@ -782,51 +827,6 @@ function MainApp() {
                       </div>
                     </div>
                   </div>
-                  </div>
-
-                  {/* Horizontal Scrollable Market Assets (Visible on Mobile & Desktop) */}
-                  <div className="bg-[#151619] rounded-3xl border border-white/5 p-4 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-40 h-40 bg-orange-500/5 blur-[60px] rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-                    <div className="flex items-center justify-between mb-4 px-1 relative z-10">
-                      <div>
-                        <h2 className="text-sm font-bold tracking-tight">Market Assets</h2>
-                        <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-white/30 mt-0.5">Live Prices</p>
-                      </div>
-                    </div>
-                    <div className="flex overflow-x-auto space-x-3 scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] relative z-10">
-                      {assets.filter(a => !marketCategory || a.type === marketCategory).map(asset => {
-                        const isUp = (asset.history?.length ?? 0) > 1 && asset.history[asset.history.length - 1].price >= asset.history[asset.history.length - 2].price;
-                        return (
-                          <button
-                            key={asset.id}
-                            onClick={() => { setSelectedAsset(asset); setActiveTab('trade'); }}
-                            className={cn(
-                              'shrink-0 px-4 py-3 rounded-2xl border transition-all duration-300 flex flex-col items-center gap-2 group',
-                              selectedAsset?.id === asset.id
-                                ? 'bg-orange-500/10 border-orange-500/30 shadow-lg shadow-orange-500/5'
-                                : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.05] hover:border-white/10'
-                            )}
-                          >
-                            <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center p-2 border border-white/10">
-                              {ASSET_ICONS[asset.id]
-                                ? <img src={ASSET_ICONS[asset.id]} alt={asset.name} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-                                : <Activity className="w-5 h-5 text-orange-500" />}
-                            </div>
-                            <div className="text-center">
-                              <p className="font-bold text-xs text-white truncate group-hover:text-orange-400 transition-colors">{asset.name}</p>
-                              <p className="text-[9px] font-mono text-white/30 uppercase">{asset.type}</p>
-                            </div>
-                            <span className={cn('font-mono text-xs font-bold', isUp ? 'text-green-400' : 'text-red-400')}>
-                              {asset.price.toLocaleString(undefined, { maximumFractionDigits: asset.type === 'forex' ? 4 : 2 })}
-                            </span>
-                            <span className={cn('flex items-center gap-0.5 text-[9px] font-mono font-bold', isUp ? 'text-green-500' : 'text-red-500')}>
-                              {isUp ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                              {isUp ? '+' : ''}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
                   </div>
 
                   {/* Open Positions — full width below chart */}
