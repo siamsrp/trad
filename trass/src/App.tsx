@@ -413,6 +413,9 @@ function MainApp() {
             <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-tr from-[#f97316] to-[#facc15] rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/20">
               <TrendingUp className="text-black w-4 h-4 md:w-6 md:h-6" />
             </div>
+            <div className="hidden sm:block">
+              <h1 className="font-bold text-base md:text-xl tracking-tight uppercase">Rubicon</h1>
+            </div>
           </div>
           <nav className="hidden md:flex items-center gap-1 bg-white/5 p-1 rounded-2xl border border-white/10">
             {/* Left tabs */}

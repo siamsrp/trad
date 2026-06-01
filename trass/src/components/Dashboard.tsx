@@ -183,7 +183,64 @@ export default function Dashboard({ user, balance, trades, transactions, assets,
         ))}
       </motion.div>
 
+      {/* Market Overview Section */}
+      <motion.div
+        variants={itemVariants}
+        className="space-y-4"
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-bold tracking-tight">Market Overview</h3>
+          <p className="text-white/40 text-xs font-mono uppercase tracking-widest">Live Prices</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {assets.map((asset, i) => {
+            const currentPrice = asset.price;
+            const prevPrice = asset.history.length > 1 ? asset.history[asset.history.length - 2].price : currentPrice;
+            const change = ((currentPrice - prevPrice) / prevPrice) * 100;
+            const isPositive = change >= 0;
 
+            return (
+              <motion.div
+                key={i}
+                variants={itemVariants}
+                className="bg-[#151619] border border-white/5 p-6 rounded-2xl hover:border-white/10 transition-all"
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center p-2.5">
+                    {ASSET_ICONS[asset.id] ? (
+                      <img
+                        src={ASSET_ICONS[asset.id]}
+                        alt={asset.name}
+                        className="w-full h-full object-contain"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <Zap className="w-6 h-6 text-orange-500" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold">{asset.name}</p>
+                    <p className="text-[10px] text-white/40 font-mono uppercase tracking-widest">{asset.symbol || asset.type}</p>
+                  </div>
+                </div>
+                <p className="text-2xl font-mono font-bold tracking-tight mb-2">
+                  ${asset.price.toLocaleString(undefined, {
+                    minimumFractionDigits: asset.type === 'forex' ? 4 : 2,
+                    maximumFractionDigits: asset.type === 'forex' ? 4 : 2
+                  })}
+                </p>
+                <div className={cn(
+                  "flex items-center gap-1 text-sm font-mono font-bold",
+                  isPositive ? "text-green-500" : "text-red-500"
+                )}>
+                  {isPositive ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
+                  {isPositive ? '+' : ''}{change.toFixed(2)}%
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      </motion.div>
 
       {/* More Button */}
       <motion.div variants={itemVariants} className="flex justify-center">
