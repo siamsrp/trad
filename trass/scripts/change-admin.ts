@@ -11,12 +11,12 @@ import * as path from 'path';
 import * as readline from 'readline';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDggdBiBTj9oYEj826RWscUDvIu3yeDTUc",
-  authDomain: "trass-92ddd.firebaseapp.com",
-  projectId: "trass-92ddd",
-  storageBucket: "trass-92ddd.firebasestorage.app",
-  messagingSenderId: "965741495696",
-  appId: "1:965741495696:web:e05acc7a5767604e181f15"
+  apiKey: "AIzaSyBZ-6hrM12YyjeMLBpJLqY4sPz9vshTmaQ",
+  authDomain: "rubicon-liberty.firebaseapp.com",
+  projectId: "rubicon-liberty",
+  storageBucket: "rubicon-liberty.firebasestorage.app",
+  messagingSenderId: "48381695882",
+  appId: "1:48381695882:web:71cb66b8db2c2374fada73"
 };
 
 const app = initializeApp(firebaseConfig);

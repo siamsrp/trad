@@ -13,18 +13,18 @@ import {
   signInWithEmailAndPassword,
   updateProfile
 } from 'firebase/auth';
-// @ts-ignore
+
 const firebaseConfig = {
-  apiKey: "AIza" + String.fromCharCode(83) + "yDggdBiBTj9oYEj826RWscUDvIu3yeDTUc",
-  authDomain: "trass-92ddd.firebaseapp.com",
-  projectId: "trass-92ddd",
-  storageBucket: "trass-92ddd.firebasestorage.app",
-  messagingSenderId: "965741495696",
-  appId: "1:965741495696:web:e05acc7a5767604e181f15",
-  measurementId: "G-ZVH6M7Q140"
+  apiKey: "AIzaSyBZ-6hrM12YyjeMLBpJLqY4sPz9vshTmaQ",
+  authDomain: "rubicon-liberty.firebaseapp.com",
+  projectId: "rubicon-liberty",
+  storageBucket: "rubicon-liberty.firebasestorage.app",
+  messagingSenderId: "48381695882",
+  appId: "1:48381695882:web:71cb66b8db2c2374fada73",
+  measurementId: "G-VS5S17N4T6"
 };
 
-// Initialize Firebase (Only for Auth)
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
