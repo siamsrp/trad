@@ -601,15 +601,15 @@ function MainApp() {
               {activeTab === 'trade' && (
                 <motion.div key="trade" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
                   {/* Horizontal Scrollable Market Assets at Top of Trade Page */}
-                  <div className="bg-[#151619] rounded-3xl border border-white/5 p-4 relative overflow-hidden">
+                  <div className="bg-[#151619] rounded-3xl border border-white/5 p-3 relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-40 h-40 bg-orange-500/5 blur-[60px] rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-                    <div className="flex items-center justify-between mb-4 px-1 relative z-10">
+                    <div className="flex items-center justify-between mb-3 px-1 relative z-10">
                       <div>
                         <h2 className="text-sm font-bold tracking-tight">Market Assets</h2>
                         <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-white/30 mt-0.5">Live Prices</p>
                       </div>
                     </div>
-                    <div className="flex overflow-x-auto space-x-3 scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] relative z-10">
+                    <div className="flex overflow-x-auto space-x-2 scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] relative z-10">
                       {assets.filter(a => !marketCategory || a.type === marketCategory).map(asset => {
                         const isUp = (asset.history?.length ?? 0) > 1 && asset.history[asset.history.length - 1].price >= asset.history[asset.history.length - 2].price;
                         return (
@@ -617,29 +617,29 @@ function MainApp() {
                             key={asset.id}
                             onClick={() => { setSelectedAsset(asset); setActiveTab('trade'); }}
                             className={cn(
-                              'shrink-0 px-3 py-3 rounded-2xl border transition-all duration-300 flex items-center justify-between gap-3 group w-48',
+                              'shrink-0 px-2.5 py-2 rounded-2xl border transition-all duration-300 flex items-center justify-between gap-2 group w-40',
                               selectedAsset?.id === asset.id
                                 ? 'bg-orange-500/10 border-orange-500/30 shadow-lg shadow-orange-500/5'
                                 : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.05] hover:border-white/10'
                             )}
                           >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div className="w-8 h-8 shrink-0 bg-white/5 rounded-xl flex items-center justify-center p-1.5 border border-white/10">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="w-7 h-7 shrink-0 bg-white/5 rounded-xl flex items-center justify-center p-1.5 border border-white/10">
                                 {ASSET_ICONS[asset.id]
                                   ? <img src={ASSET_ICONS[asset.id]} alt={asset.name} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-                                  : <Activity className="w-4 h-4 text-orange-500" />}
+                                  : <Activity className="w-3.5 h-3.5 text-orange-500" />}
                               </div>
                               <div className="text-left min-w-0">
-                                <p className="font-bold text-xs text-white truncate group-hover:text-orange-400 transition-colors">{asset.name}</p>
-                                <p className="text-[9px] font-mono text-white/40 uppercase">{asset.type}</p>
+                                <p className="font-bold text-[11px] text-white truncate group-hover:text-orange-400 transition-colors">{asset.name}</p>
+                                <p className="text-[8px] font-mono text-white/40 uppercase">{asset.type}</p>
                               </div>
                             </div>
                             <div className="flex flex-col items-end shrink-0">
-                              <span className={cn('font-mono text-xs font-bold', isUp ? 'text-green-400' : 'text-red-400')}>
+                              <span className={cn('font-mono text-[11px] font-bold', isUp ? 'text-green-400' : 'text-red-400')}>
                                 {asset.price.toLocaleString(undefined, { maximumFractionDigits: asset.type === 'forex' ? 4 : 2 })}
                               </span>
-                              <span className={cn('flex items-center gap-0.5 text-[9px] font-mono font-bold', isUp ? 'text-green-500' : 'text-red-500')}>
-                                {isUp ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                              <span className={cn('flex items-center gap-0.5 text-[8px] font-mono font-bold', isUp ? 'text-green-500' : 'text-red-500')}>
+                                {isUp ? <ArrowUpRight className="w-2.5 h-2.5" /> : <ArrowDownRight className="w-2.5 h-2.5" />}
                                 {isUp ? '+' : ''}
                               </span>
                             </div>
