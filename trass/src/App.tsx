@@ -603,12 +603,6 @@ function MainApp() {
                   {/* Horizontal Scrollable Market Assets at Top of Trade Page */}
                   <div className="bg-[#151619] rounded-3xl border border-white/5 p-3 relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-40 h-40 bg-orange-500/5 blur-[60px] rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-                    <div className="flex items-center justify-between mb-3 px-1 relative z-10">
-                      <div>
-                        <h2 className="text-sm font-bold tracking-tight">Market Assets</h2>
-                        <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-white/30 mt-0.5">Live Prices</p>
-                      </div>
-                    </div>
                     <div className="flex overflow-x-auto space-x-2 scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] relative z-10">
                       {assets.filter(a => !marketCategory || a.type === marketCategory).map(asset => {
                         const isUp = (asset.history?.length ?? 0) > 1 && asset.history[asset.history.length - 1].price >= asset.history[asset.history.length - 2].price;
