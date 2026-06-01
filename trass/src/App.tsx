@@ -17,6 +17,12 @@ import AdminPanel from './components/AdminPanel';
 import MiningPage from './components/MiningPage';
 import DepositPage from './components/DepositPage';
 import WithdrawalPage from './components/WithdrawalPage';
+import InvestPlanPage from './components/InvestPlanPage';
+import NewCoinPage from './components/NewCoinPage';
+import LoanPage from './components/LoanPage';
+import NFTPage from './components/NFTPage';
+import GiftPage from './components/GiftPage';
+import RecoveryPage from './components/RecoveryPage';
 import { auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged, User } from './firebase';
 import { AnimatePresence, motion } from 'motion/react';
 import LandingPage from './components/LandingPage';
@@ -60,6 +66,12 @@ function MainApp() {
   const [showMining, setShowMining] = useState(false);
   const [showDeposit, setShowDeposit] = useState(false);
   const [showWithdrawal, setShowWithdrawal] = useState(false);
+  const [showInvestPlan, setShowInvestPlan] = useState(false);
+  const [showNewCoin, setShowNewCoin] = useState(false);
+  const [showLoan, setShowLoan] = useState(false);
+  const [showNFT, setShowNFT] = useState(false);
+  const [showGift, setShowGift] = useState(false);
+  const [showRecovery, setShowRecovery] = useState(false);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'trade' | 'wallet' | 'profile' | 'admin' | 'history'>('dashboard');
   const [walletAmount, setWalletAmount] = useState('');
   const [walletLoading, setWalletLoading] = useState(false);
@@ -343,6 +355,24 @@ function MainApp() {
       case 'mining':
         setShowMining(true);
         break;
+      case 'invest':
+        setShowInvestPlan(true);
+        break;
+      case 'newcoin':
+        setShowNewCoin(true);
+        break;
+      case 'loan':
+        setShowLoan(true);
+        break;
+      case 'nft':
+        setShowNFT(true);
+        break;
+      case 'gift':
+        setShowGift(true);
+        break;
+      case 'recovery':
+        setShowRecovery(true);
+        break;
       default:
         break;
     }
@@ -382,6 +412,12 @@ function MainApp() {
   if (showDeposit) return <DepositPage onBack={() => setShowDeposit(false)} balance={balance} onDeposit={(amount) => { setWalletAmount(String(amount)); handleWalletAction('deposit'); }} />;
   if (showWithdrawal) return <WithdrawalPage onBack={() => setShowWithdrawal(false)} balance={balance} onWithdraw={(amount) => { setWalletAmount(String(amount)); handleWalletAction('withdrawal'); }} />;
   if (showMining) return <MiningPage onBack={() => setShowMining(false)} balance={balance} />;
+  if (showInvestPlan) return <InvestPlanPage onBack={() => setShowInvestPlan(false)} balance={balance} />;
+  if (showNewCoin) return <NewCoinPage onBack={() => setShowNewCoin(false)} balance={balance} />;
+  if (showLoan) return <LoanPage onBack={() => setShowLoan(false)} balance={balance} />;
+  if (showNFT) return <NFTPage onBack={() => setShowNFT(false)} balance={balance} />;
+  if (showGift) return <GiftPage onBack={() => setShowGift(false)} balance={balance} />;
+  if (showRecovery) return <RecoveryPage onBack={() => setShowRecovery(false)} balance={balance} />;
 
   const openTrades = trades.filter(t => t.status === 'open');
 
