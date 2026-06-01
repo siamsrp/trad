@@ -617,28 +617,32 @@ function MainApp() {
                             key={asset.id}
                             onClick={() => { setSelectedAsset(asset); setActiveTab('trade'); }}
                             className={cn(
-                              'shrink-0 px-4 py-3 rounded-2xl border transition-all duration-300 flex flex-col items-center gap-2 group',
+                              'shrink-0 px-3 py-3 rounded-2xl border transition-all duration-300 flex items-center justify-between gap-3 group w-48',
                               selectedAsset?.id === asset.id
                                 ? 'bg-orange-500/10 border-orange-500/30 shadow-lg shadow-orange-500/5'
                                 : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.05] hover:border-white/10'
                             )}
                           >
-                            <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center p-2 border border-white/10">
-                              {ASSET_ICONS[asset.id]
-                                ? <img src={ASSET_ICONS[asset.id]} alt={asset.name} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-                                : <Activity className="w-5 h-5 text-orange-500" />}
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="w-8 h-8 shrink-0 bg-white/5 rounded-xl flex items-center justify-center p-1.5 border border-white/10">
+                                {ASSET_ICONS[asset.id]
+                                  ? <img src={ASSET_ICONS[asset.id]} alt={asset.name} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                                  : <Activity className="w-4 h-4 text-orange-500" />}
+                              </div>
+                              <div className="text-left min-w-0">
+                                <p className="font-bold text-xs text-white truncate group-hover:text-orange-400 transition-colors">{asset.name}</p>
+                                <p className="text-[9px] font-mono text-white/40 uppercase">{asset.type}</p>
+                              </div>
                             </div>
-                            <div className="text-center">
-                              <p className="font-bold text-xs text-white truncate group-hover:text-orange-400 transition-colors">{asset.name}</p>
-                              <p className="text-[9px] font-mono text-white/30 uppercase">{asset.type}</p>
+                            <div className="flex flex-col items-end shrink-0">
+                              <span className={cn('font-mono text-xs font-bold', isUp ? 'text-green-400' : 'text-red-400')}>
+                                {asset.price.toLocaleString(undefined, { maximumFractionDigits: asset.type === 'forex' ? 4 : 2 })}
+                              </span>
+                              <span className={cn('flex items-center gap-0.5 text-[9px] font-mono font-bold', isUp ? 'text-green-500' : 'text-red-500')}>
+                                {isUp ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                                {isUp ? '+' : ''}
+                              </span>
                             </div>
-                            <span className={cn('font-mono text-xs font-bold', isUp ? 'text-green-400' : 'text-red-400')}>
-                              {asset.price.toLocaleString(undefined, { maximumFractionDigits: asset.type === 'forex' ? 4 : 2 })}
-                            </span>
-                            <span className={cn('flex items-center gap-0.5 text-[9px] font-mono font-bold', isUp ? 'text-green-500' : 'text-red-500')}>
-                              {isUp ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                              {isUp ? '+' : ''}
-                            </span>
                           </button>
                         );
                       })}
