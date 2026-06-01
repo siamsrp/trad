@@ -5,8 +5,7 @@ import {
   Globe, Zap, BarChart3, PieChart as PieChartIcon,
   ChevronRight, ExternalLink, RefreshCcw, DollarSign,
   TrendingUpIcon, Coins, HandCoins, Pickaxe, Image,
-  LineChart, Gift as GiftIcon, RotateCcw, ChevronDown, ChevronUp,
-  Hexagon
+  LineChart, Gift as GiftIcon, RotateCcw, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, 
@@ -97,15 +96,7 @@ export default function Dashboard({ user, balance, trades, transactions, assets,
       animate="visible"
       className="space-y-8 pb-12"
     >
-      {/* Header - Icon */}
-      <motion.div 
-        variants={itemVariants}
-        className="flex items-center gap-4"
-      >
-        <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/30">
-          <Hexagon className="w-6 h-6 text-white" fill="currentColor" />
-        </div>
-      </motion.div>
+
 
       {/* Assets Section */}
       <motion.div 
