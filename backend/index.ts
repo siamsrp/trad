@@ -307,13 +307,12 @@ app.post('/api/transactions', async (req, res) => {
       return;
     }
 
-    const tx = await Transaction.create({ userId: user._id, type, amount });
-
-    user.balance += type === 'deposit' ? amount : -amount;
-    await user.save();
+    // For deposit/withdrawal, create as pending!
+    const tx = await Transaction.create({ userId: user._id, type, amount, status: 'pending' });
 
     res.json({ transaction: tx, balance: user.balance });
-  } catch {
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Error creating transaction' });
   }
 });
@@ -326,6 +325,53 @@ app.get('/api/transactions/:email', async (req, res) => {
     res.json(txs);
   } catch {
     res.status(500).json({ error: 'Error fetching transactions' });
+  }
+});
+
+// New admin endpoints to approve/reject transactions
+app.patch('/api/admin/transactions/:id/approve', async (req, res) => {
+  try {
+    const tx = await Transaction.findById(req.params.id);
+    if (!tx) return res.status(404).json({ error: 'Transaction not found' });
+    if (tx.status !== 'pending') return res.status(400).json({ error: 'Transaction is not pending' });
+    
+    const user = await User.findById(tx.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // Calculate new balance
+    const newBalance = tx.type === 'deposit' ? user.balance + tx.amount : user.balance - tx.amount;
+    if (tx.type === 'withdrawal' && user.balance < tx.amount) {
+      return res.status(400).json({ error: 'Insufficient balance now' });
+    }
+    
+    tx.balanceBefore = user.balance;
+    tx.balanceAfter = newBalance;
+    tx.status = 'approved';
+    await tx.save();
+    
+    user.balance = newBalance;
+    await user.save();
+
+    res.json({ transaction: tx, balance: user.balance });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error approving transaction' });
+  }
+});
+
+app.patch('/api/admin/transactions/:id/reject', async (req, res) => {
+  try {
+    const tx = await Transaction.findById(req.params.id);
+    if (!tx) return res.status(404).json({ error: 'Transaction not found' });
+    if (tx.status !== 'pending') return res.status(400).json({ error: 'Transaction is not pending' });
+
+    tx.status = 'rejected';
+    await tx.save();
+    
+    res.json({ transaction: tx });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error rejecting transaction' });
   }
 });
 

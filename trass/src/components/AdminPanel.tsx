@@ -44,10 +44,17 @@ export default function AdminPanel({ user, mongoUser, onUserUpdate }: AdminPanel
   const [userTrades, setUserTrades] = useState<any[]>([]);
   const [userTxs, setUserTxs] = useState<any[]>([]);
   const [tradeFilter, setTradeFilter] = useState<'all' | 'open' | 'closed'>('all');
-  const [txFilter, setTxFilter] = useState<'all' | 'deposit' | 'withdrawal'>('all');
+  const [txFilter, setTxFilter] = useState<'all' | 'deposit' | 'withdrawal' | 'pending' | 'approved' | 'rejected'>('all');
   const [selectedMarketAsset, setSelectedMarketAsset] = useState<any>(null);
   const [priceInput, setPriceInput] = useState('');
   const [volInput, setVolInput] = useState('');
+  // Toast state
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   // Add custom coin states
   const [showAddCoin, setShowAddCoin] = useState(false);
@@ -415,7 +422,11 @@ export default function AdminPanel({ user, mongoUser, onUserUpdate }: AdminPanel
 
   const filteredUsers = users.filter(u => u.displayName?.toLowerCase().includes(search.toLowerCase()) || u.email?.toLowerCase().includes(search.toLowerCase()));
   const filteredTrades = tradeFilter === 'all' ? trades : trades.filter(t => t.status === tradeFilter);
-  const filteredTxs = txFilter === 'all' ? transactions : transactions.filter(t => t.type === txFilter);
+  const filteredTxs = txFilter === 'all' 
+    ? transactions 
+    : ['pending', 'approved', 'rejected'].includes(txFilter) 
+      ? transactions.filter(t => t.status === txFilter) 
+      : transactions.filter(t => t.type === txFilter);
 
   // Chart data
   const revenueData = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((name, i) => ({
@@ -456,6 +467,22 @@ export default function AdminPanel({ user, mongoUser, onUserUpdate }: AdminPanel
 
   return (
     <motion.div initial="hidden" animate="visible" variants={{ hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.08 } } }} className="space-y-8 pb-12">
+      {/* Toast Notification */}
+      {toast && (
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          className={cn(
+            "fixed top-4 right-4 z-[100] px-5 py-3 rounded-xl text-sm font-bold shadow-xl border",
+            toast.type === 'success' 
+              ? "bg-green-500/10 border-green-500/30 text-green-400" 
+              : "bg-red-500/10 border-red-500/30 text-red-400"
+          )}
+        >
+          {toast.message}
+        </motion.div>
+      )}
 
       {/* Header */}
       <motion.div variants={itemVariants} className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -730,7 +757,7 @@ export default function AdminPanel({ user, mongoUser, onUserUpdate }: AdminPanel
         <motion.div variants={itemVariants} className="bg-[#151619] rounded-3xl border border-white/5 p-8">
           <div className="flex items-center justify-between mb-6">
             <div className="flex gap-1 bg-white/5 p-1 rounded-xl border border-white/10">
-              {(['all','deposit','withdrawal'] as const).map(f => (
+              {(['all','pending','deposit','withdrawal','approved','rejected'] as const).map(f => (
                 <button key={f} onClick={() => setTxFilter(f)} className={cn('px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all', txFilter === f ? 'bg-orange-500 text-black' : 'text-white/40 hover:text-white')}>{f}</button>
               ))}
             </div>
@@ -751,9 +778,49 @@ export default function AdminPanel({ user, mongoUser, onUserUpdate }: AdminPanel
                     <p className="text-[10px] text-white/30 font-mono">{new Date(tx.timestamp).toLocaleString()}</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className={cn('font-mono font-bold', tx.type === 'deposit' ? 'text-green-400' : 'text-red-400')}>{tx.type === 'deposit' ? '+' : '-'}${tx.amount?.toLocaleString()}</p>
-                  <span className="text-[9px] font-mono text-green-400/50">{tx.status || 'completed'}</span>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className={cn('font-mono font-bold', tx.type === 'deposit' ? 'text-green-400' : 'text-red-400')}>{tx.type === 'deposit' ? '+' : '-'}${tx.amount?.toLocaleString()}</p>
+                    <span className={cn('text-[9px] font-mono', 
+                      tx.status === 'pending' ? 'text-yellow-400' :
+                      tx.status === 'approved' ? 'text-green-400' :
+                      tx.status === 'rejected' ? 'text-red-400' : 'text-green-400/50')}>{tx.status || 'completed'}</span>
+                  </div>
+                  {/* Approve/Reject buttons if pending */}
+                  {tx.status === 'pending' && (
+                    <div className="flex gap-2">
+                      <button onClick={async () => {
+                        try {
+                          await fetch(`${API}/api/admin/transactions/${tx._id}/approve`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json', 'x-user-email': user?.email || '' }
+                          });
+                          fetchAll();
+                          showToast('Transaction approved!', 'success');
+                        } catch {
+                          showToast('Error approving transaction', 'error');
+                        }
+                      }} className="px-3 py-1.5 bg-green-500/10 border border-green-500/20 text-green-400 text-xs font-bold rounded-xl hover:bg-green-500/20 transition-all">
+                        Approve
+                      </button>
+                      <button onClick={async () => {
+                        if (confirm('Reject this transaction?')) {
+                          try {
+                            await fetch(`${API}/api/admin/transactions/${tx._id}/reject`, {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json', 'x-user-email': user?.email || '' }
+                            });
+                            fetchAll();
+                            showToast('Transaction rejected!', 'success');
+                          } catch {
+                            showToast('Error rejecting transaction', 'error');
+                          }
+                        }
+                      }} className="px-3 py-1.5 bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold rounded-xl hover:bg-red-500/20 transition-all">
+                        Reject
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

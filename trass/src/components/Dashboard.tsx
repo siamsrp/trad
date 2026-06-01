@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Wallet, TrendingUp, TrendingDown, Activity, 
   ArrowUpRight, ArrowDownRight, Clock, ShieldCheck,
   Globe, Zap, BarChart3, PieChart as PieChartIcon,
   ChevronRight, ExternalLink, RefreshCcw, DollarSign,
   TrendingUpIcon, Coins, HandCoins, Pickaxe, Image,
-  LineChart, Gift as GiftIcon, RotateCcw
+  LineChart, Gift as GiftIcon, RotateCcw, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, 
@@ -29,6 +29,9 @@ export default function Dashboard({ user, balance, trades, transactions, assets,
   const totalTrades = trades.length;
   const winningTrades = trades.filter(t => t.status === 'closed' && t.profit > 0).length;
   const winRate = totalTrades > 0 ? (winningTrades / totalTrades) * 100 : 0;
+
+  // State to control expanded view
+  const [showMore, setShowMore] = useState(false);
   
   const recentTrades = trades.slice(0, 5);
   const recentTransactions = transactions.slice(0, 5);
@@ -93,13 +96,13 @@ export default function Dashboard({ user, balance, trades, transactions, assets,
       animate="visible"
       className="space-y-8 pb-12"
     >
-      {/* Welcome Header */}
+      {/* Total Assets Header */}
       <motion.div 
         variants={itemVariants}
         className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-2"
       >
         <div className="space-y-1">
-          <h2 className="text-4xl font-bold tracking-tighter uppercase">Welcome back, <span className="text-orange-500">{user?.displayName?.split(' ')[0] || 'Trader'}</span></h2>
+          <h2 className="text-4xl font-bold tracking-tighter uppercase">Total Assets</h2>
           <p className="text-white/40 text-xs font-mono tracking-widest uppercase flex items-center gap-2">
             <RefreshCcw className="w-3 h-3 animate-spin-slow" />
             Terminal active • Session secure
@@ -124,89 +127,111 @@ export default function Dashboard({ user, balance, trades, transactions, assets,
         </div>
       </motion.div>
 
-      {/* Top Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { 
-            label: 'Total Balance', 
-            value: `$${balance.toLocaleString()}`, 
-            icon: Wallet, 
-            color: 'orange', 
-            change: '+2.4%', 
-            isPositive: true,
-            desc: 'Available capital'
-          },
-          { 
-            label: 'Active Trades', 
-            value: trades.filter(t => t.status === 'open').length, 
-            icon: Activity, 
-            color: 'blue', 
-            change: 'Live', 
-            isPositive: true,
-            desc: 'Current positions'
-          },
-          { 
-            label: 'Win Rate', 
-            value: `${winRate.toFixed(1)}%`, 
-            icon: TrendingUp, 
-            color: 'green', 
-            change: `${winningTrades} Wins`, 
-            isPositive: true,
-            desc: 'Trading efficiency'
-          },
-          { 
-            label: 'Account Tier', 
-            value: 'PRO', 
-            icon: ShieldCheck, 
-            color: 'purple', 
-            change: 'Verified', 
-            isPositive: true,
-            desc: 'Institutional access'
-          }
-        ].map((stat, i) => (
-          <motion.div 
-            key={i}
-            variants={itemVariants}
-            whileHover={{ y: -5 }}
-            className={cn(
-              "group relative overflow-hidden bg-[#151619] border border-white/5 p-6 rounded-3xl transition-all duration-500",
-              stat.color === 'orange' ? "hover:border-orange-500/30" :
-              stat.color === 'blue' ? "hover:border-blue-500/30" :
-              stat.color === 'green' ? "hover:border-green-500/30" : "hover:border-purple-500/30"
-            )}
+      {/* More Button */}
+      <motion.div variants={itemVariants} className="flex justify-center">
+        <button
+          onClick={() => setShowMore(!showMore)}
+          className="px-8 py-3 bg-orange-500/10 border border-orange-500/20 rounded-2xl text-orange-500 font-bold uppercase tracking-[0.2em] text-xs hover:bg-orange-500/20 transition-all flex items-center gap-2"
+        >
+          {showMore ? 'Less' : 'More'}
+          {showMore ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </button>
+      </motion.div>
+
+      {/* Top Stats Grid - Conditionally Visible */}
+      <AnimatePresence>
+        {showMore && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
           >
-            <div className={cn(
-              "absolute top-0 right-0 w-32 h-32 blur-[60px] rounded-full -translate-y-1/2 translate-x-1/2 opacity-20 group-hover:opacity-40 transition-all duration-700",
-              stat.color === 'orange' ? "bg-orange-500" :
-              stat.color === 'blue' ? "bg-blue-500" :
-              stat.color === 'green' ? "bg-green-500" : "bg-purple-500"
-            )} />
-            
-            <div className="flex items-center justify-between relative z-10 mb-6">
-              <div className={cn(
-                "w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-500 group-hover:scale-110",
-                stat.color === 'orange' ? "bg-orange-500/10 text-orange-500" :
-                stat.color === 'blue' ? "bg-blue-500/10 text-blue-500" :
-                stat.color === 'green' ? "bg-green-500/10 text-green-500" : "bg-purple-500/10 text-purple-500"
-              )}>
-                <stat.icon className="w-6 h-6" />
-              </div>
-              <span className={cn(
-                "text-[10px] font-bold font-mono px-2.5 py-1 rounded-full uppercase tracking-widest",
-                stat.isPositive ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"
-              )}>
-                {stat.change}
-              </span>
-            </div>
-            
-            <div className="relative z-10 space-y-1">
-              <p className="text-white/20 text-[10px] font-mono uppercase tracking-[0.2em]">{stat.label}</p>
-              <h3 className="text-3xl font-bold font-mono tracking-tighter">{stat.value}</h3>
-              <p className="text-[10px] text-white/40 font-medium">{stat.desc}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { 
+                  label: 'Total Balance', 
+                  value: `$${balance.toLocaleString()}`, 
+                  icon: Wallet, 
+                  color: 'orange', 
+                  change: '+2.4%', 
+                  isPositive: true,
+                  desc: 'Available capital'
+                },
+                { 
+                  label: 'Active Trades', 
+                  value: trades.filter(t => t.status === 'open').length, 
+                  icon: Activity, 
+                  color: 'blue', 
+                  change: 'Live', 
+                  isPositive: true,
+                  desc: 'Current positions'
+                },
+                { 
+                  label: 'Win Rate', 
+                  value: `${winRate.toFixed(1)}%`, 
+                  icon: TrendingUp, 
+                  color: 'green', 
+                  change: `${winningTrades} Wins`, 
+                  isPositive: true,
+                  desc: 'Trading efficiency'
+                },
+                { 
+                  label: 'Account Tier', 
+                  value: 'PRO', 
+                  icon: ShieldCheck, 
+                  color: 'purple', 
+                  change: 'Verified', 
+                  isPositive: true,
+                  desc: 'Institutional access'
+                }
+              ].map((stat, i) => (
+                <motion.div 
+                  key={i}
+                  variants={itemVariants}
+                  whileHover={{ y: -5 }}
+                  className={cn(
+                    "group relative overflow-hidden bg-[#151619] border border-white/5 p-6 rounded-3xl transition-all duration-500",
+                    stat.color === 'orange' ? "hover:border-orange-500/30" :
+                    stat.color === 'blue' ? "hover:border-blue-500/30" :
+                    stat.color === 'green' ? "hover:border-green-500/30" : "hover:border-purple-500/30"
+                  )}
+                >
+                  <div className={cn(
+                    "absolute top-0 right-0 w-32 h-32 blur-[60px] rounded-full -translate-y-1/2 translate-x-1/2 opacity-20 group-hover:opacity-40 transition-all duration-700",
+                    stat.color === 'orange' ? "bg-orange-500" :
+                    stat.color === 'blue' ? "bg-blue-500" :
+                    stat.color === 'green' ? "bg-green-500" : "bg-purple-500"
+                  )} />
+                  
+                  <div className="flex items-center justify-between relative z-10 mb-6">
+                    <div className={cn(
+                      "w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-500 group-hover:scale-110",
+                      stat.color === 'orange' ? "bg-orange-500/10 text-orange-500" :
+                      stat.color === 'blue' ? "bg-blue-500/10 text-blue-500" :
+                      stat.color === 'green' ? "bg-green-500/10 text-green-500" : "bg-purple-500/10 text-purple-500"
+                    )}>
+                      <stat.icon className="w-6 h-6" />
+                    </div>
+                    <span className={cn(
+                      "text-[10px] font-bold font-mono px-2.5 py-1 rounded-full uppercase tracking-widest",
+                      stat.isPositive ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"
+                    )}>
+                      {stat.change}
+                    </span>
+                  </div>
+                  
+                  <div className="relative z-10 space-y-1">
+                    <p className="text-white/20 text-[10px] font-mono uppercase tracking-[0.2em]">{stat.label}</p>
+                    <h3 className="text-3xl font-bold font-mono tracking-tighter">{stat.value}</h3>
+                    <p className="text-[10px] text-white/40 font-medium">{stat.desc}</p>
+                  </div>
+                </motion.div>
+              ))}
             </div>
           </motion.div>
-        ))}
-      </div>
+        )}
+      </AnimatePresence>
 
       {/* Feature Buttons Grid */}
       <motion.div 
@@ -215,6 +240,7 @@ export default function Dashboard({ user, balance, trades, transactions, assets,
       >
         {[
           { id: 'deposit', label: 'Deposit', icon: DollarSign, color: 'blue' },
+          { id: 'withdrawal', label: 'Withdraw', icon: ArrowDownRight, color: 'red' },
           { id: 'invest', label: 'Invest Plan', icon: TrendingUpIcon, color: 'purple' },
           { id: 'newcoin', label: 'New Coin', icon: Coins, color: 'green' },
           { id: 'loan', label: 'Loan', icon: HandCoins, color: 'yellow' },

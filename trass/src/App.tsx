@@ -16,6 +16,7 @@ import CommoditiesPage from './components/CommoditiesPage';
 import AdminPanel from './components/AdminPanel';
 import MiningPage from './components/MiningPage';
 import DepositPage from './components/DepositPage';
+import WithdrawalPage from './components/WithdrawalPage';
 import { auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged, User } from './firebase';
 import { AnimatePresence, motion } from 'motion/react';
 import LandingPage from './components/LandingPage';
@@ -58,6 +59,7 @@ function MainApp() {
   const [showCommodities, setShowCommodities] = useState(false);
   const [showMining, setShowMining] = useState(false);
   const [showDeposit, setShowDeposit] = useState(false);
+  const [showWithdrawal, setShowWithdrawal] = useState(false);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'trade' | 'wallet' | 'profile' | 'admin' | 'history'>('dashboard');
   const [walletAmount, setWalletAmount] = useState('');
   const [walletLoading, setWalletLoading] = useState(false);
@@ -330,6 +332,22 @@ function MainApp() {
     }
   };
 
+  const handleFeatureClick = (feature: string) => {
+    switch (feature) {
+      case 'deposit':
+        setShowDeposit(true);
+        break;
+      case 'withdrawal':
+        setShowWithdrawal(true);
+        break;
+      case 'mining':
+        setShowMining(true);
+        break;
+      default:
+        break;
+    }
+  };
+
   const logout = () => signOut(auth);
 
   // ── Loading / unauthenticated screens ────────────────────────────────────────
@@ -361,6 +379,9 @@ function MainApp() {
   if (!user && showStocks) return <StocksPage onBack={() => setShowStocks(false)} onStartTrading={() => { setShowStocks(false); setShowAuth(true); }} />;
   if (!user && showCommodities) return <CommoditiesPage onBack={() => setShowCommodities(false)} onStartTrading={() => { setShowCommodities(false); setShowAuth(true); }} />;
   if (!user && showAuth) return <AuthPage onBack={() => setShowAuth(false)} />;
+  if (showDeposit) return <DepositPage onBack={() => setShowDeposit(false)} balance={balance} onDeposit={(amount) => { setWalletAmount(String(amount)); handleWalletAction('deposit'); }} />;
+  if (showWithdrawal) return <WithdrawalPage onBack={() => setShowWithdrawal(false)} balance={balance} onWithdraw={(amount) => { setWalletAmount(String(amount)); handleWalletAction('withdrawal'); }} />;
+  if (showMining) return <MiningPage onBack={() => setShowMining(false)} user={user} balance={balance} />;
 
   const openTrades = trades.filter(t => t.status === 'open');
 
@@ -569,7 +590,7 @@ function MainApp() {
             <AnimatePresence mode="wait">
               {activeTab === 'dashboard' && (
                 <motion.div key="dashboard" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                  <Dashboard user={user} balance={balance} trades={trades} transactions={transactions} assets={assets} />
+                  <Dashboard user={user} balance={balance} trades={trades} transactions={transactions} assets={assets} onFeatureClick={handleFeatureClick} />
                 </motion.div>
               )}
 
