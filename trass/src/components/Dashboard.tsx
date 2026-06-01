@@ -97,7 +97,7 @@ export default function Dashboard({ user, balance, trades, transactions, assets,
       animate="visible"
       className="space-y-8 pb-12"
     >
-      {/* Logo + Rubicon Header */}
+      {/* Header - Icon + Rubicon */}
       <motion.div 
         variants={itemVariants}
         className="flex items-center gap-4"
@@ -111,12 +111,12 @@ export default function Dashboard({ user, balance, trades, transactions, assets,
         </div>
       </motion.div>
 
-      {/* Total Assets */}
+      {/* Assets Section */}
       <motion.div 
         variants={itemVariants}
         className="bg-gradient-to-br from-orange-500/10 to-orange-500/5 border border-orange-500/20 p-8 rounded-3xl"
       >
-        <p className="text-white/40 text-xs font-mono uppercase tracking-widest mb-2">Total Assets</p>
+        <p className="text-white/40 text-xs font-mono uppercase tracking-widest mb-2">Assets</p>
         <h2 className="text-5xl font-bold font-mono tracking-tighter mb-2">
           ${balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </h2>
@@ -124,65 +124,6 @@ export default function Dashboard({ user, balance, trades, transactions, assets,
           <RefreshCcw className="w-3 h-3 animate-spin-slow" />
           Real-time valuation
         </p>
-      </motion.div>
-
-      {/* Horizontally Scrolling Market Section */}
-      <motion.div 
-        variants={itemVariants}
-        className="relative"
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-bold tracking-tight">Market Overview</h3>
-          <p className="text-white/40 text-xs font-mono uppercase tracking-widest">Live Prices</p>
-        </div>
-        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4">
-          {assets.map((asset, i) => {
-            const currentPrice = asset.price;
-            const prevPrice = asset.history.length > 1 ? asset.history[asset.history.length - 2].price : currentPrice;
-            const change = ((currentPrice - prevPrice) / prevPrice) * 100;
-            const isPositive = change >= 0;
-
-            return (
-              <motion.div
-                key={i}
-                variants={itemVariants}
-                className="min-w-[200px] bg-[#151619] border border-white/5 p-6 rounded-2xl hover:border-white/10 transition-all"
-              >
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center p-2.5">
-                    {ASSET_ICONS[asset.id] ? (
-                      <img 
-                        src={ASSET_ICONS[asset.id]} 
-                        alt={asset.name} 
-                        className="w-full h-full object-contain"
-                        referrerPolicy="no-referrer"
-                      />
-                    ) : (
-                      <Zap className="w-6 h-6 text-orange-500" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold">{asset.name}</p>
-                    <p className="text-[10px] text-white/40 font-mono uppercase tracking-widest">{asset.symbol || asset.type}</p>
-                  </div>
-                </div>
-                <p className="text-2xl font-mono font-bold tracking-tight mb-2">
-                  ${asset.price.toLocaleString(undefined, { 
-                    minimumFractionDigits: asset.type === 'forex' ? 4 : 2,
-                    maximumFractionDigits: asset.type === 'forex' ? 4 : 2 
-                  })}
-                </p>
-                <div className={cn(
-                  "flex items-center gap-1 text-sm font-mono font-bold",
-                  isPositive ? "text-green-500" : "text-red-500"
-                )}>
-                  {isPositive ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
-                  {isPositive ? '+' : ''}{change.toFixed(2)}%
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
       </motion.div>
 
       {/* Feature Buttons Grid */}
@@ -244,6 +185,65 @@ export default function Dashboard({ user, balance, trades, transactions, assets,
             </span>
           </motion.button>
         ))}
+      </motion.div>
+
+      {/* Market Overview Section */}
+      <motion.div 
+        variants={itemVariants}
+        className="space-y-4"
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-bold tracking-tight">Market Overview</h3>
+          <p className="text-white/40 text-xs font-mono uppercase tracking-widest">Live Prices</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {assets.map((asset, i) => {
+            const currentPrice = asset.price;
+            const prevPrice = asset.history.length > 1 ? asset.history[asset.history.length - 2].price : currentPrice;
+            const change = ((currentPrice - prevPrice) / prevPrice) * 100;
+            const isPositive = change >= 0;
+
+            return (
+              <motion.div
+                key={i}
+                variants={itemVariants}
+                className="bg-[#151619] border border-white/5 p-6 rounded-2xl hover:border-white/10 transition-all"
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center p-2.5">
+                    {ASSET_ICONS[asset.id] ? (
+                      <img 
+                        src={ASSET_ICONS[asset.id]} 
+                        alt={asset.name} 
+                        className="w-full h-full object-contain"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <Zap className="w-6 h-6 text-orange-500" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold">{asset.name}</p>
+                    <p className="text-[10px] text-white/40 font-mono uppercase tracking-widest">{asset.symbol || asset.type}</p>
+                  </div>
+                </div>
+                <p className="text-2xl font-mono font-bold tracking-tight mb-2">
+                  ${asset.price.toLocaleString(undefined, { 
+                    minimumFractionDigits: asset.type === 'forex' ? 4 : 2,
+                    maximumFractionDigits: asset.type === 'forex' ? 4 : 2 
+                  })}
+                </p>
+                <div className={cn(
+                  "flex items-center gap-1 text-sm font-mono font-bold",
+                  isPositive ? "text-green-500" : "text-red-500"
+                )}>
+                  {isPositive ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
+                  {isPositive ? '+' : ''}{change.toFixed(2)}%
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
       </motion.div>
 
       {/* More Button */}
@@ -663,7 +663,7 @@ export default function Dashboard({ user, balance, trades, transactions, assets,
                           "text-sm font-mono font-bold tracking-tight",
                           tx.type === 'deposit' ? "text-green-400" : "text-red-400"
                         )}>
-                          {tx.type === 'deposit' ? '+' : '-'}${tx.amount.toLocaleString()}
+                          {tx.type === 'deposit' ? '+' : '-'}$${tx.amount.toLocaleString()}
                         </p>
                         <p className="text-[10px] text-white/20 font-mono">
                           {tx.timestamp ? new Date(tx.timestamp).toLocaleDateString() : 'Today'}
