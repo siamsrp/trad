@@ -381,7 +381,7 @@ function MainApp() {
   if (!user && showAuth) return <AuthPage onBack={() => setShowAuth(false)} />;
   if (showDeposit) return <DepositPage onBack={() => setShowDeposit(false)} balance={balance} onDeposit={(amount) => { setWalletAmount(String(amount)); handleWalletAction('deposit'); }} />;
   if (showWithdrawal) return <WithdrawalPage onBack={() => setShowWithdrawal(false)} balance={balance} onWithdraw={(amount) => { setWalletAmount(String(amount)); handleWalletAction('withdrawal'); }} />;
-  if (showMining) return <MiningPage onBack={() => setShowMining(false)} user={user} balance={balance} />;
+  if (showMining) return <MiningPage onBack={() => setShowMining(false)} balance={balance} />;
 
   const openTrades = trades.filter(t => t.status === 'open');
 

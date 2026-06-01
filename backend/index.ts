@@ -5,7 +5,7 @@ import cors from 'cors';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import admin from 'firebase-admin';
-import { User, Transaction, Trade, KYC, CustomAsset, Manipulation, BinaryOption } from './models.ts';
+import { User, Transaction, Trade, KYC, CustomAsset, Manipulation, BinaryOption } from './models.js';
 
 dotenv.config();
 
