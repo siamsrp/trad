@@ -413,10 +413,6 @@ function MainApp() {
             <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-tr from-[#f97316] to-[#facc15] rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/20">
               <TrendingUp className="text-black w-4 h-4 md:w-6 md:h-6" />
             </div>
-            <div className="hidden sm:block">
-              <h1 className="font-bold text-base md:text-xl tracking-tight uppercase">Rubicon <span className="text-orange-500">Liberty</span></h1>
-              <p className="text-[9px] uppercase tracking-[0.2em] text-white/40 font-mono hidden md:block">Simulation Engine v1.0</p>
-            </div>
           </div>
           <nav className="hidden md:flex items-center gap-1 bg-white/5 p-1 rounded-2xl border border-white/10">
             {/* Left tabs */}
@@ -498,37 +494,6 @@ function MainApp() {
       </header>
 
       <main className="flex-1 p-3 md:p-4 lg:p-6 space-y-3 md:space-y-4 max-w-[1600px] mx-auto w-full pb-20 md:pb-6">
-
-        {/* Asset Scroller */}
-        <div className="overflow-x-auto pb-2 flex gap-2 md:gap-4 scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          {assets.filter(a => !marketCategory || a.type === marketCategory).map(asset => (
-            <button
-              key={asset.id}
-              onClick={() => { setSelectedAsset(asset); setActiveTab('trade'); }}
-              className={cn(
-                'shrink-0 p-3 md:p-4 rounded-2xl border transition-all duration-300 flex items-center gap-2 md:gap-4 min-w-[150px] md:min-w-[200px]',
-                selectedAsset?.id === asset.id
-                  ? 'bg-orange-500/10 border-orange-500/50 shadow-lg shadow-orange-500/5'
-                  : 'bg-[#151619] border-white/5 hover:border-white/10 hover:bg-white/[0.07]'
-              )}
-            >
-              <div className="w-8 h-8 md:w-10 md:h-10 bg-white/5 rounded-xl flex items-center justify-center p-1.5 md:p-2 border border-white/10">
-                {ASSET_ICONS[asset.id]
-                  ? <img src={ASSET_ICONS[asset.id]} alt={asset.name} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-                  : <Activity className="w-4 h-4 md:w-5 md:h-5 text-orange-500" />}
-              </div>
-              <div className="text-left">
-                <p className="font-bold text-xs md:text-sm">{asset.name}</p>
-                <p className={cn('font-mono text-xs font-bold',
-                  (asset.history?.length ?? 0) > 1 && asset.history[asset.history.length - 1].price >= asset.history[asset.history.length - 2].price
-                    ? 'text-green-400' : 'text-red-400'
-                )}>
-                  ${asset.price.toLocaleString(undefined, { maximumFractionDigits: asset.type === 'forex' ? 4 : 2 })}
-                </p>
-              </div>
-            </button>
-          ))}
-        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 md:gap-6 items-start">
           {/* Left Sidebar — Market Assets */}
