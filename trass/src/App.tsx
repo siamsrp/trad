@@ -535,62 +535,67 @@ function MainApp() {
       <main className="flex-1 p-3 md:p-4 lg:p-6 space-y-3 md:space-y-4 max-w-[1600px] mx-auto w-full pb-20 md:pb-6">
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 md:gap-6 items-start">
-          {/* Left Sidebar — Market Assets */}
-          <div className="hidden lg:block lg:col-span-3">
-            <div className="bg-[#151619] rounded-3xl border border-white/5 p-4 flex flex-col relative overflow-hidden lg:h-[calc(100vh-140px)]">
-              <div className="absolute top-0 right-0 w-40 h-40 bg-orange-500/5 blur-[60px] rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-              <div className="flex items-center justify-between mb-4 px-1 relative z-10">
-                <div>
-                  <h2 className="text-sm font-bold tracking-tight">Market Assets</h2>
-                  <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-white/30 mt-0.5">Live Prices</p>
+          {/* Left Sidebar — Market Assets (not shown on admin) */}
+          {activeTab !== 'admin' && (
+            <div className="hidden lg:block lg:col-span-3">
+              <div className="bg-[#151619] rounded-3xl border border-white/5 p-4 flex flex-col relative overflow-hidden lg:h-[calc(100vh-140px)]">
+                <div className="absolute top-0 right-0 w-40 h-40 bg-orange-500/5 blur-[60px] rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+                <div className="flex items-center justify-between mb-4 px-1 relative z-10">
+                  <div>
+                    <h2 className="text-sm font-bold tracking-tight">Market Assets</h2>
+                    <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-white/30 mt-0.5">Live Prices</p>
+                  </div>
+                  <div className="w-8 h-8 bg-orange-500/10 rounded-xl flex items-center justify-center">
+                    <BarChart3 className="w-4 h-4 text-orange-500" />
+                  </div>
                 </div>
-                <div className="w-8 h-8 bg-orange-500/10 rounded-xl flex items-center justify-center">
-                  <BarChart3 className="w-4 h-4 text-orange-500" />
+                <div className="flex-1 overflow-y-auto space-y-1.5 scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] relative z-10">
+                  {assets.filter(a => !marketCategory || a.type === marketCategory).map(asset => {
+                    const isUp = (asset.history?.length ?? 0) > 1 && asset.history[asset.history.length - 1].price >= asset.history[asset.history.length - 2].price;
+                    return (
+                      <button
+                        key={asset.id}
+                        onClick={() => { setSelectedAsset(asset); setActiveTab('trade'); }}
+                        className={cn(
+                          'w-full px-3 py-3 rounded-2xl border transition-all duration-300 flex items-center justify-between gap-3 group',
+                          selectedAsset?.id === asset.id
+                            ? 'bg-orange-500/10 border-orange-500/30 shadow-lg shadow-orange-500/5'
+                            : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.05] hover:border-white/10'
+                        )}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-8 h-8 shrink-0 bg-white/5 rounded-xl flex items-center justify-center p-1.5 border border-white/10">
+                            {ASSET_ICONS[asset.id]
+                              ? <img src={ASSET_ICONS[asset.id]} alt={asset.name} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                              : <Activity className="w-4 h-4 text-orange-500" />}
+                          </div>
+                          <div className="text-left min-w-0">
+                            <p className="font-bold text-xs text-white truncate group-hover:text-orange-400 transition-colors">{asset.name}</p>
+                            <p className="text-[9px] font-mono text-white/30 uppercase">{asset.type}</p>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end shrink-0">
+                          <span className={cn('font-mono text-xs font-bold', isUp ? 'text-green-400' : 'text-red-400')}>
+                            {asset.price.toLocaleString(undefined, { maximumFractionDigits: asset.type === 'forex' ? 4 : 2 })}
+                          </span>
+                          <span className={cn('flex items-center gap-0.5 text-[9px] font-mono font-bold', isUp ? 'text-green-500' : 'text-red-500')}>
+                            {isUp ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                            {isUp ? '+' : ''}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
-              </div>
-              <div className="flex-1 overflow-y-auto space-y-1.5 scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] relative z-10">
-                {assets.filter(a => !marketCategory || a.type === marketCategory).map(asset => {
-                  const isUp = (asset.history?.length ?? 0) > 1 && asset.history[asset.history.length - 1].price >= asset.history[asset.history.length - 2].price;
-                  return (
-                    <button
-                      key={asset.id}
-                      onClick={() => { setSelectedAsset(asset); setActiveTab('trade'); }}
-                      className={cn(
-                        'w-full px-3 py-3 rounded-2xl border transition-all duration-300 flex items-center justify-between gap-3 group',
-                        selectedAsset?.id === asset.id
-                          ? 'bg-orange-500/10 border-orange-500/30 shadow-lg shadow-orange-500/5'
-                          : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.05] hover:border-white/10'
-                      )}
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-8 h-8 shrink-0 bg-white/5 rounded-xl flex items-center justify-center p-1.5 border border-white/10">
-                          {ASSET_ICONS[asset.id]
-                            ? <img src={ASSET_ICONS[asset.id]} alt={asset.name} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-                            : <Activity className="w-4 h-4 text-orange-500" />}
-                        </div>
-                        <div className="text-left min-w-0">
-                          <p className="font-bold text-xs text-white truncate group-hover:text-orange-400 transition-colors">{asset.name}</p>
-                          <p className="text-[9px] font-mono text-white/30 uppercase">{asset.type}</p>
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-end shrink-0">
-                        <span className={cn('font-mono text-xs font-bold', isUp ? 'text-green-400' : 'text-red-400')}>
-                          {asset.price.toLocaleString(undefined, { maximumFractionDigits: asset.type === 'forex' ? 4 : 2 })}
-                        </span>
-                        <span className={cn('flex items-center gap-0.5 text-[9px] font-mono font-bold', isUp ? 'text-green-500' : 'text-red-500')}>
-                          {isUp ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                          {isUp ? '+' : ''}
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
               </div>
             </div>
-          </div>
+          )}
 
           {/* Main Content */}
-          <div className="lg:col-span-9">
+          <div className={cn({
+            'lg:col-span-9': activeTab !== 'admin',
+            'lg:col-span-12': activeTab === 'admin'
+          })}>
             <AnimatePresence mode="wait">
               {activeTab === 'dashboard' && (
                 <motion.div key="dashboard" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
