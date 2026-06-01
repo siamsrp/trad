@@ -1,0 +1,6 @@
+# https://nixpacks.com/docs/providers/node
+[phases.install]
+cmds = ["npm ci"]
+
+[phases.start]
+cmd = "npm start"

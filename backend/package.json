@@ -5,7 +5,8 @@
   "main": "index.ts",
   "scripts": {
     "start": "npx tsx index.ts",
-    "dev": "nodemon --ignore db.json --exec npx tsx index.ts"
+    "dev": "nodemon --ignore db.json --exec npx tsx index.ts",
+    "build": "echo 'No build step required - using tsx directly'"
   },
   "dependencies": {
     "cors": "^2.8.5",
