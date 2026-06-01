@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "type": "module",
   "main": "index.ts",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "start": "npx tsx index.ts",
     "dev": "nodemon --ignore db.json --exec npx tsx index.ts",

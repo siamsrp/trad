@@ -1,6 +1,12 @@
 # https://nixpacks.com/docs/providers/node
+[phases.setup]
+nixPkgs = ["...", "nodejs_20"]
+
 [phases.install]
 cmds = ["npm ci"]
+
+[phases.build]
+cmds = ["npm run build"]
 
 [phases.start]
 cmd = "npm start"
