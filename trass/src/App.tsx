@@ -14,6 +14,8 @@ import ForexPage from './components/ForexPage';
 import StocksPage from './components/StocksPage';
 import CommoditiesPage from './components/CommoditiesPage';
 import AdminPanel from './components/AdminPanel';
+import MiningPage from './components/MiningPage';
+import DepositPage from './components/DepositPage';
 import { auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged, User } from './firebase';
 import { AnimatePresence, motion } from 'motion/react';
 import LandingPage from './components/LandingPage';
@@ -54,6 +56,8 @@ function MainApp() {
   const [showForex, setShowForex] = useState(false);
   const [showStocks, setShowStocks] = useState(false);
   const [showCommodities, setShowCommodities] = useState(false);
+  const [showMining, setShowMining] = useState(false);
+  const [showDeposit, setShowDeposit] = useState(false);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'trade' | 'wallet' | 'profile' | 'admin' | 'history'>('dashboard');
   const [walletAmount, setWalletAmount] = useState('');
   const [walletLoading, setWalletLoading] = useState(false);

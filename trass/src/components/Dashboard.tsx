@@ -3,7 +3,9 @@ import {
   Wallet, TrendingUp, TrendingDown, Activity, 
   ArrowUpRight, ArrowDownRight, Clock, ShieldCheck,
   Globe, Zap, BarChart3, PieChart as PieChartIcon,
-  ChevronRight, ExternalLink, RefreshCcw
+  ChevronRight, ExternalLink, RefreshCcw, DollarSign,
+  TrendingUpIcon, Coins, HandCoins, Pickaxe, Image,
+  LineChart, Gift as GiftIcon, RotateCcw
 } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, 
@@ -19,9 +21,10 @@ interface DashboardProps {
   trades: any[];
   transactions: any[];
   assets: any[];
+  onFeatureClick?: (feature: string) => void;
 }
 
-export default function Dashboard({ user, balance, trades, transactions, assets }: DashboardProps) {
+export default function Dashboard({ user, balance, trades, transactions, assets, onFeatureClick }: DashboardProps) {
   // Calculate some stats
   const totalTrades = trades.length;
   const winningTrades = trades.filter(t => t.status === 'closed' && t.profit > 0).length;
@@ -204,6 +207,66 @@ export default function Dashboard({ user, balance, trades, transactions, assets 
           </motion.div>
         ))}
       </div>
+
+      {/* Feature Buttons Grid */}
+      <motion.div 
+        variants={itemVariants}
+        className="grid grid-cols-3 md:grid-cols-5 gap-3 md:gap-4"
+      >
+        {[
+          { id: 'deposit', label: 'Deposit', icon: DollarSign, color: 'blue' },
+          { id: 'invest', label: 'Invest Plan', icon: TrendingUpIcon, color: 'purple' },
+          { id: 'newcoin', label: 'New Coin', icon: Coins, color: 'green' },
+          { id: 'loan', label: 'Loan', icon: HandCoins, color: 'yellow' },
+          { id: 'mining', label: 'Mining', icon: Pickaxe, color: 'orange' },
+          { id: 'nft', label: 'NFT', icon: Image, color: 'pink' },
+          { id: 'stocks', label: 'Stocks', icon: LineChart, color: 'cyan' },
+          { id: 'gift', label: 'Gift', icon: GiftIcon, color: 'red' },
+          { id: 'recovery', label: 'Recovery', icon: RotateCcw, color: 'gray' },
+        ].map((feature, i) => (
+          <motion.button
+            key={feature.id}
+            variants={itemVariants}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => onFeatureClick?.(feature.id)}
+            className={cn(
+              "group relative overflow-hidden bg-[#151619] border border-white/5 p-4 md:p-6 rounded-2xl transition-all duration-500 hover:border-white/20",
+              "flex flex-col items-center justify-center gap-2 md:gap-3 min-h-[100px] md:min-h-[120px]"
+            )}
+          >
+            <div className={cn(
+              "absolute top-0 right-0 w-20 h-20 blur-[40px] rounded-full -translate-y-1/2 translate-x-1/2 opacity-0 group-hover:opacity-30 transition-all duration-700",
+              feature.color === 'blue' ? "bg-blue-500" :
+              feature.color === 'purple' ? "bg-purple-500" :
+              feature.color === 'green' ? "bg-green-500" :
+              feature.color === 'yellow' ? "bg-yellow-500" :
+              feature.color === 'orange' ? "bg-orange-500" :
+              feature.color === 'pink' ? "bg-pink-500" :
+              feature.color === 'cyan' ? "bg-cyan-500" :
+              feature.color === 'red' ? "bg-red-500" : "bg-gray-500"
+            )} />
+            
+            <div className={cn(
+              "w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all duration-500 group-hover:scale-110 relative z-10",
+              feature.color === 'blue' ? "bg-blue-500/10 text-blue-500 group-hover:bg-blue-500/20" :
+              feature.color === 'purple' ? "bg-purple-500/10 text-purple-500 group-hover:bg-purple-500/20" :
+              feature.color === 'green' ? "bg-green-500/10 text-green-500 group-hover:bg-green-500/20" :
+              feature.color === 'yellow' ? "bg-yellow-500/10 text-yellow-500 group-hover:bg-yellow-500/20" :
+              feature.color === 'orange' ? "bg-orange-500/10 text-orange-500 group-hover:bg-orange-500/20" :
+              feature.color === 'pink' ? "bg-pink-500/10 text-pink-500 group-hover:bg-pink-500/20" :
+              feature.color === 'cyan' ? "bg-cyan-500/10 text-cyan-500 group-hover:bg-cyan-500/20" :
+              feature.color === 'red' ? "bg-red-500/10 text-red-500 group-hover:bg-red-500/20" : "bg-gray-500/10 text-gray-500 group-hover:bg-gray-500/20"
+            )}>
+              <feature.icon className="w-6 h-6 md:w-7 md:h-7" />
+            </div>
+            
+            <span className="text-xs md:text-sm font-bold text-white/80 group-hover:text-white transition-colors relative z-10 text-center">
+              {feature.label}
+            </span>
+          </motion.button>
+        ))}
+      </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Performance Chart */}
