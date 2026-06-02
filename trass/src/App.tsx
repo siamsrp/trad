@@ -757,7 +757,20 @@ function MainApp() {
                             user={user}
                             selectedAsset={selectedAsset}
                             balance={balance}
-                            onBalanceUpdate={(b) => { if (b > 0) setBalance(b); else if (user?.email) fetchUserData(user.email); }}
+                            onBalanceUpdate={(b) => { 
+                              if (typeof b === 'number' && b > 0) {
+                                setBalance(b);
+                              } else if (user?.email) {
+                                fetchUserData(user.email);
+                              }
+                            }}
+                            onTradeResult={(result) => {
+                              if (result.won) {
+                                showToast(`Binary trade won! +$${result.profit.toFixed(2)}`, 'success');
+                              } else {
+                                showToast(`Binary trade lost! -$${result.amount.toFixed(2)}`, 'error');
+                              }
+                            }}
                           />
                         ) : (<>
                         <div className="shrink-0">

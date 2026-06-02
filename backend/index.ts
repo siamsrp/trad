@@ -81,9 +81,24 @@ async function loadCustomAssetsAndManipulations() {
   }
 }
 
+async function initializePlatformSettings() {
+  const existing = await PlatformSettings.findOne();
+  if (!existing) {
+    await PlatformSettings.create({
+      general: { platformName: 'Trading Platform', maintenanceMode: false, registrationEnabled: true },
+      trading: { minTradeAmount: 1, maxTradeAmount: 100000, maxLeverage: 100, commissionRate: 0.01 },
+      mining: { enabled: true, minFee: 10, rewardMultiplier: 1.5, availableCoins: ['BTC', 'ETH', 'SOL'], maxConcurrentSessions: 1 },
+      kyc: { required: false, autoApprove: false, requiredDocuments: ['id', 'selfie'] },
+      notifications: { emailEnabled: true, smsEnabled: false, pushEnabled: true }
+    });
+    console.log('Initialized default platform settings');
+  }
+}
+
 mongoose.connect(MONGODB_URI)
   .then(async () => {
     console.log('Connected to MongoDB');
+    await initializePlatformSettings();
     await loadCustomAssetsAndManipulations();
   })
   .catch(err => console.error('MongoDB connection error:', err));
@@ -206,16 +221,22 @@ app.patch('/api/users/:id/balance', requireAuth, async (req, res) => {
 app.post('/api/trades', async (req, res) => {
   const { email, assetId, assetName, type, amount, entryPrice, lots = 1, multiplier = 1 } = req.body;
   if (!email || !assetId || !type || !amount || !entryPrice) {
-    res.status(400).json({ error: 'Missing required fields' });
-    return;
+    res.status(400).json({ error: 'Missing required fields' }); return;
   }
   try {
     const user = await User.findOne({ email });
     if (!user) { res.status(404).json({ error: 'User not found' }); return; }
 
+    const platformSettings = await PlatformSettings.findOne();
+    if (platformSettings?.kyc?.required) {
+      const userKyc = await KYC.findOne({ userId: user._id });
+      if (!userKyc || userKyc.status !== 'approved') {
+        return res.status(403).json({ error: 'KYC verification required to trade' });
+      }
+    }
+
     if (type === 'buy' && user.balance < amount) {
-      res.status(400).json({ error: 'Insufficient balance' });
-      return;
+      res.status(400).json({ error: 'Insufficient balance' }); return;
     }
 
     const units = amount / entryPrice;
@@ -436,6 +457,14 @@ app.post('/api/binary', async (req, res) => {
     if (!user) { res.status(404).json({ error: 'User not found' }); return; }
     if (user.balance < amount) { res.status(400).json({ error: 'Insufficient balance' }); return; }
 
+    const platformSettings = await PlatformSettings.findOne();
+    if (platformSettings?.kyc?.required) {
+      const userKyc = await KYC.findOne({ userId: user._id });
+      if (!userKyc || userKyc.status !== 'approved') {
+        return res.status(403).json({ error: 'KYC verification required to trade' });
+      }
+    }
+
     const asset = assets.find(a => a.id === assetId);
     if (!asset) { res.status(404).json({ error: 'Asset not found' }); return; }
 
@@ -443,8 +472,19 @@ app.post('/api/binary', async (req, res) => {
     const dbOption = await BinaryOption.findOne({ duration: Number(duration) });
     const commission = dbOption ? (dbOption.commission / 100) : (duration === 30 ? 0.25 : 0.30);
 
+    const balanceBefore = user.balance;
     user.balance -= amount;
     await user.save();
+
+    await Trade.create({
+      userId: user._id,
+      assetId,
+      assetName,
+      type: direction === 'up' ? 'buy' : 'sell',
+      amount,
+      units: 0, // Binary trade uses fixed amount, not units
+      entryPrice
+    });
 
     setTimeout(async () => {
       try {
@@ -454,7 +494,29 @@ app.post('/api/binary', async (req, res) => {
         const payout = won ? amount + (amount * commission) : 0;
 
         const u = await User.findOne({ email });
-        if (u) { u.balance += payout; await u.save(); }
+        if (u) {
+          const balanceAfterPayout = u.balance + payout;
+          await Transaction.create({
+            userId: u._id,
+            type: won ? 'trade_profit' : 'trade_loss',
+            amount: Math.abs(profit),
+            balanceBefore: u.balance,
+            balanceAfter: balanceAfterPayout,
+            metadata: { coinSymbol: assetId, tradeId: 'binary' }
+          });
+          u.balance = balanceAfterPayout;
+          await u.save();
+        }
+
+        // Update the trade's status to closed
+        const lastTrade = await Trade.findOne({ userId: user._id, assetId, status: 'open' }).sort({ timestamp: -1 });
+        if (lastTrade) {
+          lastTrade.exitPrice = exitPrice;
+          lastTrade.profit = profit;
+          lastTrade.status = 'closed';
+          lastTrade.closedAt = new Date();
+          await lastTrade.save();
+        }
 
         io.emit(`binary_result_${email}`, {
           assetId, assetName, direction, amount, duration,
@@ -465,6 +527,7 @@ app.post('/api/binary', async (req, res) => {
 
     res.json({ success: true, entryPrice, commission, balance: user.balance });
   } catch (e) {
+    console.error(e);
     res.status(500).json({ error: 'Error placing binary trade' });
   }
 });

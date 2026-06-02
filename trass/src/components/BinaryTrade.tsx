@@ -14,6 +14,7 @@ interface BinaryTradeProps {
   selectedAsset: any;
   balance: number;
   onBalanceUpdate: (b: number) => void;
+  onTradeResult?: (result: TradeResult) => void;
 }
 
 interface TradeResult {
@@ -42,7 +43,7 @@ interface ActiveTrade {
   timeLeft: number;
 }
 
-export default function BinaryTrade({ user, selectedAsset, balance, onBalanceUpdate }: BinaryTradeProps) {
+export default function BinaryTrade({ user, selectedAsset, balance, onBalanceUpdate, onTradeResult }: BinaryTradeProps) {
   const [amount, setAmount] = useState(10);
   const [duration, setDuration] = useState<number>(30);
   const [options, setOptions] = useState<any[]>([]);
@@ -77,9 +78,12 @@ export default function BinaryTrade({ user, selectedAsset, balance, onBalanceUpd
       ));
       setResolvedResult(result);
       onBalanceUpdate(0); // trigger refetch
+      if (onTradeResult) {
+        onTradeResult(result);
+      }
     });
     return () => { s.close(); };
-  }, [user?.email, onBalanceUpdate]);
+  }, [user?.email, onBalanceUpdate, onTradeResult]);
 
   // Cleanup resolved result popup
   useEffect(() => {
